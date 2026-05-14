@@ -63,6 +63,9 @@ async function main(): Promise<void> {
           console.log(`Local signing secret: ${signingSecret}`);
           if (cursor) console.log(`Starting after cursor: ${cursor}`);
         },
+        onRateLimited: ({ retryAfterMs }) => {
+          console.log(`Listen rate limited; retrying after ${retryAfterMs}ms`);
+        },
         onBatch: async ({ delivered, cursor, hasMore }) => {
           await writeListenerState(stateDir, {
             signingSecret: listenerState.signingSecret,

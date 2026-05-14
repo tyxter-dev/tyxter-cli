@@ -22,7 +22,27 @@ describe('CLI argument parsing', () => {
         forwardTo: 'http://127.0.0.1:4242/hook',
         stateDir: '.tyxter-cli',
         limit: 20,
+        waitMs: 25000,
         pollIntervalMs: 1000,
+        maxPollIntervalMs: 30000,
+      },
+    });
+  });
+
+  it('parses listen wait and max poll interval tuning', () => {
+    const parsed = parseCli(
+      ['listen', '--api-key', 'tx_sandbox_test', '--forward-to', 'http://127.0.0.1:4242/hook'],
+      {
+        TYXTER_WEBHOOK_WAIT_MS: '5000',
+        TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS: '20000',
+      },
+    );
+
+    expect(parsed).toMatchObject({
+      kind: 'listen',
+      options: {
+        waitMs: 5000,
+        maxPollIntervalMs: 20000,
       },
     });
   });

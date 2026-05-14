@@ -12,6 +12,7 @@ export const ListenWebhookEventsResponseSchema = z.object({
   data: z.array(ListenWebhookEventSchema),
   has_more: z.boolean(),
   next_cursor: z.string().nullable(),
+  next_poll_after_ms: z.number().int().min(0).optional(),
 });
 
 export type ListenWebhookEventsResponse = z.infer<typeof ListenWebhookEventsResponseSchema>;

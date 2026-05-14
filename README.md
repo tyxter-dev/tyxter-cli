@@ -1,6 +1,6 @@
 # Tyxter CLI
 
-Local developer CLI for Tyxter Messaging sandbox workflows. Today it polls
+Local developer CLI for Tyxter Messaging sandbox workflows. Today it long-polls
 Tyxter with a sandbox API key and forwards each event payload to a local URL
 with the same `tyxter-webhook-id`, `tyxter-webhook-timestamp`, and
 `tyxter-webhook-signature` headers as normal webhook delivery.
@@ -81,6 +81,15 @@ prints the persisted local signing secret and cursor. `listen --from-now`
 performs the same checkpoint before starting the listener, which avoids
 forwarding historical events in one command.
 
+`listen` uses bounded long polling by default (`TYXTER_WEBHOOK_WAIT_MS=25000`),
+backs off idle loops up to `TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000`, adds
+small jitter, and honors server `429 Retry-After` responses. The Tyxter API
+still enforces abuse protection server-side; CLI timing settings are for local
+developer ergonomics, not security.
+
+`TYXTER_WEBHOOK_POLL_INTERVAL_MS` is the base retry/backoff interval. It is not
+a fixed tight polling loop when no events are available.
+
 If your local app verifies webhook signatures, configure it with the same local
 secret used by the CLI. Either set `TYXTER_WEBHOOK_SECRET` yourself and pass the
 same value to the receiver, or read the generated value from `tyxter status` and
@@ -153,6 +162,8 @@ Optional environment variables: `TYXTER_API_URL`, `TYXTER_TOUR_PORT`,
 ## Security Notes
 
 - Use sandbox keys only. The listen endpoint rejects live keys.
+- The Tyxter API rate-limits sandbox listen calls and returns `Retry-After`
+  when clients exceed the server-side budget.
 - Do not paste `status` output into public issues; it includes the local signing secret.
 - The listener persists only its signing secret and cursor, not webhook payloads.
 - Verify signatures against the raw request body in your app.

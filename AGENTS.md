@@ -5,7 +5,7 @@ Guidance for AI coding agents (Codex, Claude Code, etc.) working in this repo.
 
 ## What This Repo Is
 
-Tyxter CLI is a local Node.js + TypeScript tool that polls Tyxter's sandbox
+Tyxter CLI is a local Node.js + TypeScript tool that long-polls Tyxter's sandbox
 listen endpoint (`GET /v1/webhook-events/listen`) and forwards each event to a
 local URL, re-signing the payload with the same `tyxter-webhook-id`,
 `tyxter-webhook-timestamp`, and `tyxter-webhook-signature` headers as real
@@ -14,6 +14,11 @@ URL or registering a dashboard endpoint.
 
 State (local signing secret + cursor) lives in the `tyxter-cli-data` Docker
 volume, or in `.tyxter-cli/` when running outside Docker.
+
+Normal listener runs send `wait_ms=25000`, back off idle loops up to
+`TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS`, and honor server `429 Retry-After`
+responses. `TYXTER_WEBHOOK_POLL_INTERVAL_MS` is the base interval, not a fixed
+tight loop. The API still owns abuse protection server-side.
 
 ## Repo Map
 

@@ -53,6 +53,10 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
         signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
         cursor: stringOption(parsed, env, 'cursor', 'TYXTER_WEBHOOK_CURSOR'),
         eventType: stringOption(parsed, env, 'event-type', 'TYXTER_WEBHOOK_EVENT_TYPE'),
+        waitMs: boundedNumberOption(parsed, env, 'wait-ms', 'TYXTER_WEBHOOK_WAIT_MS', 25_000, {
+          min: 0,
+          max: 25_000,
+        }),
         limit: numberOption(parsed, env, 'limit', 'TYXTER_WEBHOOK_LIMIT', 20),
         pollIntervalMs: numberOption(
           parsed,
@@ -60,6 +64,13 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
           'poll-interval-ms',
           'TYXTER_WEBHOOK_POLL_INTERVAL_MS',
           1_000,
+        ),
+        maxPollIntervalMs: numberOption(
+          parsed,
+          env,
+          'max-poll-interval-ms',
+          'TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS',
+          30_000,
         ),
         once: booleanOption(parsed, 'once'),
         fromNow: booleanOption(parsed, 'from-now'),
@@ -158,6 +169,7 @@ export function helpText(): string {
     'Usage:',
     '  tyxter listen --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter listen --from-now --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter listen --wait-ms 25000 --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter checkpoint --api-key <tx_sandbox_...>',
     '  tyxter simulate inbound --api-key <tx_sandbox_...> --from <phone> --to <phone>',
     '  tyxter tour --api-key <tx_sandbox_...> --forward-to <url> --from <phone> --to <phone>',
@@ -169,6 +181,8 @@ export function helpText(): string {
     '  TYXTER_API_KEY=tx_sandbox_...',
     '  TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:4242/webhooks/tyxter',
     '  TYXTER_WEBHOOK_SECRET=whsec_listen_...',
+    '  TYXTER_WEBHOOK_WAIT_MS=25000',
+    '  TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000',
     '  TYXTER_CLI_STATE_DIR=/data',
   ].join('\n');
 }
@@ -240,6 +254,27 @@ function numberOption(
   const parsedNumber = Number(raw);
   if (!Number.isInteger(parsedNumber) || parsedNumber <= 0) {
     throw new Error(`--${flag} must be a positive integer.`);
+  }
+  return parsedNumber;
+}
+
+function boundedNumberOption(
+  parsed: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+  flag: string,
+  envKey: string,
+  fallback: number,
+  bounds: { min: number; max: number },
+): number {
+  const raw = stringOption(parsed, env, flag, envKey);
+  if (!raw) return fallback;
+  const parsedNumber = Number(raw);
+  if (
+    !Number.isInteger(parsedNumber) ||
+    parsedNumber < bounds.min ||
+    parsedNumber > bounds.max
+  ) {
+    throw new Error(`--${flag} must be an integer from ${bounds.min} to ${bounds.max}.`);
   }
   return parsedNumber;
 }

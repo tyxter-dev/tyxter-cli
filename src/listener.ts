@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { endpointUrl, type FetchLike, readFailure } from './http.js';
+import { endpointUrl, HttpStatusError, type FetchLike, readFailure } from './http.js';
 import { ListenWebhookEventsResponseSchema, type ListenWebhookEventsResponse } from './schemas.js';
 import { signWebhook } from './signature.js';
 
@@ -16,6 +16,7 @@ export interface ListenerOptions {
   readonly cursor?: string;
   readonly eventType?: string;
   readonly limit?: number;
+  readonly waitMs?: number;
   readonly fetchFn?: FetchLike;
 }
 
@@ -27,26 +28,33 @@ export interface ForwardingListenerOptions extends ListenerOptions {
 
 export interface RunListenerOptions extends ForwardingListenerOptions {
   readonly pollIntervalMs: number;
+  readonly maxPollIntervalMs: number;
   readonly once: boolean;
   readonly signal?: AbortSignal;
   readonly onStart?: (details: { signingSecret: string; cursor: string | null }) => void | Promise<void>;
+  readonly onRateLimited?: (details: { retryAfterMs: number }) => void | Promise<void>;
   readonly onBatch?: (details: {
     delivered: number;
     cursor: string | null;
     hasMore: boolean;
   }) => void | Promise<void>;
+  readonly random?: () => number;
+  readonly jitterRatio?: number;
+  readonly sleep?: (ms: number, signal: AbortSignal | undefined) => Promise<void>;
 }
 
 export interface PollResult {
   readonly delivered: number;
   readonly cursor: string | null;
   readonly hasMore: boolean;
+  readonly nextPollAfterMs?: number;
 }
 
 export interface ListenPage {
   readonly data: ListenWebhookEventsResponse['data'];
   readonly cursor: string | null;
   readonly hasMore: boolean;
+  readonly nextPollAfterMs?: number;
 }
 
 export function createListenSigningSecret(): string {
@@ -59,6 +67,7 @@ export async function readListenPage(options: ListenerOptions): Promise<ListenPa
   url.searchParams.set('limit', String(options.limit ?? 20));
   if (options.cursor) url.searchParams.set('cursor', options.cursor);
   if (options.eventType) url.searchParams.set('event_type', options.eventType);
+  if (options.waitMs !== undefined) url.searchParams.set('wait_ms', String(options.waitMs));
 
   const response = await fetchFn(url, {
     headers: {
@@ -73,6 +82,7 @@ export async function readListenPage(options: ListenerOptions): Promise<ListenPa
     data: body.data,
     cursor: body.next_cursor,
     hasMore: body.has_more,
+    nextPollAfterMs: body.next_poll_after_ms,
   };
 }
 
@@ -94,6 +104,7 @@ export async function pollOnce(options: ForwardingListenerOptions): Promise<Poll
     delivered: page.data.length,
     cursor: page.cursor,
     hasMore: page.hasMore,
+    nextPollAfterMs: page.nextPollAfterMs,
   };
 }
 
@@ -101,23 +112,49 @@ export async function runListener(options: RunListenerOptions): Promise<PollResu
   let cursor = options.cursor ?? null;
   let delivered = 0;
   let hasMore = false;
+  let nextPollAfterMs: number | undefined;
+  let idleDelayMs = options.pollIntervalMs;
   await options.onStart?.({ signingSecret: options.signingSecret, cursor });
 
   do {
     if (options.signal?.aborted) break;
-    const result = await pollOnce({ ...options, cursor: cursor ?? undefined });
+    let result: PollResult;
+    try {
+      result = await pollOnce({ ...options, cursor: cursor ?? undefined });
+    } catch (error) {
+      if (isListenRateLimit(error)) {
+        const retryAfterMs = error.retryAfterMs ?? idleDelayMs;
+        await options.onRateLimited?.({ retryAfterMs });
+        await sleepWithOptions(options, retryAfterMs);
+        idleDelayMs = Math.min(options.maxPollIntervalMs, idleDelayMs * 2);
+        continue;
+      }
+      throw error;
+    }
+
     delivered += result.delivered;
     cursor = result.cursor ?? cursor;
     hasMore = result.hasMore;
+    nextPollAfterMs = result.nextPollAfterMs;
     await options.onBatch?.({ delivered: result.delivered, cursor, hasMore });
 
     if (options.once) break;
     if (!hasMore) {
-      await sleep(options.pollIntervalMs, options.signal);
+      const activeDelayMs =
+        result.delivered > 0
+          ? Math.max(options.pollIntervalMs, result.nextPollAfterMs ?? 0)
+          : Math.max(idleDelayMs, result.nextPollAfterMs ?? 0);
+      await sleepWithOptions(options, withJitter(activeDelayMs, options));
+      idleDelayMs =
+        result.delivered > 0
+          ? options.pollIntervalMs
+          : Math.min(options.maxPollIntervalMs, idleDelayMs * 2);
+    } else {
+      idleDelayMs = options.pollIntervalMs;
     }
   } while (!options.signal?.aborted);
 
-  return { delivered, cursor, hasMore };
+  return { delivered, cursor, hasMore, nextPollAfterMs };
 }
 
 async function forwardEvent(input: {
@@ -142,6 +179,26 @@ async function forwardEvent(input: {
     body: rawBody,
   });
   if (!response.ok) await readFailure(response, 'local webhook forward');
+}
+
+function isListenRateLimit(error: unknown): error is HttpStatusError {
+  return (
+    error instanceof HttpStatusError &&
+    error.status === 429 &&
+    error.action === 'webhook event listen'
+  );
+}
+
+function sleepWithOptions(options: RunListenerOptions, ms: number): Promise<void> {
+  return (options.sleep ?? sleep)(Math.max(0, Math.ceil(ms)), options.signal);
+}
+
+function withJitter(ms: number, options: RunListenerOptions): number {
+  const ratio = options.jitterRatio ?? 0.2;
+  if (ratio <= 0 || ms <= 0) return ms;
+  const random = options.random ?? Math.random;
+  const factor = 1 + (random() * 2 - 1) * ratio;
+  return Math.max(0, ms * factor);
 }
 
 function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
