@@ -163,7 +163,7 @@ describe('tour command', () => {
       from: '+15551230000',
       to: '+15557650000',
       text: { body: 'hello tour' },
-      metadata: { source: 'webhook-listener-tour' },
+      metadata: { source: 'tyxter-cli-tour' },
     });
     expect(forwardedBody).toBe(
       JSON.stringify({

@@ -5,7 +5,7 @@ export interface StatusOptions {
 }
 
 export interface ListenerStatus {
-  readonly object: 'webhook_listener_status';
+  readonly object: 'tyxter_cli_status';
   readonly state_dir: string;
   readonly state_file: string;
   readonly configured: boolean;
@@ -17,7 +17,7 @@ export interface ListenerStatus {
 export async function readStatus(options: StatusOptions): Promise<ListenerStatus> {
   const state = await readListenerState(options.stateDir);
   return {
-    object: 'webhook_listener_status',
+    object: 'tyxter_cli_status',
     state_dir: options.stateDir,
     state_file: stateFilePath(options.stateDir),
     configured: state !== null,

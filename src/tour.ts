@@ -43,7 +43,7 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
     body: options.body,
     traceId: options.traceId,
     idempotencyKey: options.idempotencyKey,
-    metadata: { source: 'webhook-listener-tour' },
+    metadata: { source: 'tyxter-cli-tour' },
     fetchFn: options.fetchFn,
   });
 

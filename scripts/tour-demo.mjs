@@ -18,7 +18,7 @@ const port = readPort(process.env.TYXTER_TOUR_PORT, 4242);
 const secret = process.env.TYXTER_WEBHOOK_SECRET ?? 'whsec_tour_demo';
 const from = process.env.TYXTER_SIMULATE_FROM ?? '+15551230000';
 const to = process.env.TYXTER_SIMULATE_TO ?? '+15557650000';
-const body = process.env.TYXTER_SIMULATE_BODY ?? 'Hello from the Tyxter listener tour';
+const body = process.env.TYXTER_SIMULATE_BODY ?? 'Hello from the Tyxter CLI tour';
 const forwardTo = `http://127.0.0.1:${port}/webhooks/tyxter`;
 
 let received = false;

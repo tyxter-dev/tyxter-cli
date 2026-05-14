@@ -1,12 +1,12 @@
-name: tyxter-webhook-listener
+name: tyxter-cli
 
 services:
-  tyxter-listener:
-    image: ${TYXTER_LISTENER_IMAGE:-tyxter-webhook-listener:local}
+  tyxter-cli:
+    image: ${TYXTER_CLI_IMAGE:-tyxter-cli:local}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: tyxter-webhook-listener
+    container_name: tyxter-cli
     restart: unless-stopped
     environment:
       TYXTER_API_URL: ${TYXTER_API_URL:-https://api.tyxter.com}
@@ -17,11 +17,11 @@ services:
       TYXTER_WEBHOOK_EVENT_TYPE: ${TYXTER_WEBHOOK_EVENT_TYPE:-}
       TYXTER_WEBHOOK_LIMIT: ${TYXTER_WEBHOOK_LIMIT:-20}
       TYXTER_WEBHOOK_POLL_INTERVAL_MS: ${TYXTER_WEBHOOK_POLL_INTERVAL_MS:-1000}
-      TYXTER_LISTENER_STATE_DIR: /data
+      TYXTER_CLI_STATE_DIR: /data
     volumes:
-      - tyxter-listener-data:/data
+      - tyxter-cli-data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
-  tyxter-listener-data:
+  tyxter-cli-data:

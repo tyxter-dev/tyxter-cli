@@ -14,7 +14,6 @@ async function main(): Promise<void> {
     const command = parseCli(process.argv.slice(2), process.env);
     if (command.kind === 'help') {
       console.log(helpText());
-      process.exitCode = 1;
       return;
     }
 
@@ -80,7 +79,7 @@ async function main(): Promise<void> {
       console.log(
         JSON.stringify(
           {
-            object: 'webhook_listener_tour',
+            object: 'tyxter_cli_tour',
             message_id: result.simulated.id,
             trace_id: result.simulated.trace_id,
             forwarded: result.listen.delivered,

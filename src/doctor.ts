@@ -20,7 +20,7 @@ export interface DoctorCheck {
 }
 
 export interface DoctorResult {
-  readonly object: 'webhook_listener_doctor';
+  readonly object: 'tyxter_cli_doctor';
   readonly ok: boolean;
   readonly state_dir: string;
   readonly signing_secret: string | null;
@@ -86,7 +86,7 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
   }
 
   return {
-    object: 'webhook_listener_doctor',
+    object: 'tyxter_cli_doctor',
     ok: checks.every((check) => check.ok),
     state_dir: options.stateDir,
     signing_secret: signingSecret,

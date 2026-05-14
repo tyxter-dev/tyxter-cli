@@ -17,7 +17,7 @@ RUN pnpm build
 
 FROM base AS runtime
 ENV NODE_ENV=production
-ENV TYXTER_LISTENER_STATE_DIR=/data
+ENV TYXTER_CLI_STATE_DIR=/data
 RUN useradd --system --create-home --shell /usr/sbin/nologin app
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile

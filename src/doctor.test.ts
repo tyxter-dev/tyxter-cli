@@ -74,7 +74,7 @@ describe('doctor command', () => {
 });
 
 async function tempDir(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'tyxter-listener-'));
+  const dir = await mkdtemp(join(tmpdir(), 'tyxter-cli-'));
   dirs.push(dir);
   return dir;
 }

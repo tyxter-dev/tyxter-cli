@@ -1,4 +1,4 @@
-name: Publish webhook listener image
+name: Publish Tyxter CLI image
 
 on:
   workflow_dispatch:
@@ -14,14 +14,14 @@ on:
       - "pnpm-lock.yaml"
       - "package.json"
       - "tsconfig.json"
-      - ".github/workflows/publish-webhook-listener.yml"
+      - ".github/workflows/publish-tyxter-cli.yml"
 
 permissions:
   contents: read
   packages: write
 
 env:
-  IMAGE_NAME: ghcr.io/tyxter-dev/tyxter-webhook-listener
+  IMAGE_NAME: ghcr.io/tyxter-dev/tyxter-cli
 
 jobs:
   publish:

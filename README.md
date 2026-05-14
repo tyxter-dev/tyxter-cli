@@ -1,8 +1,8 @@
-# Tyxter Webhook Listener
+# Tyxter CLI
 
-Local sandbox webhook companion for Tyxter Messaging. It polls Tyxter with a
-sandbox API key and forwards each event payload to a local URL with the same
-`tyxter-webhook-id`, `tyxter-webhook-timestamp`, and
+Local developer CLI for Tyxter Messaging sandbox workflows. Today it polls
+Tyxter with a sandbox API key and forwards each event payload to a local URL
+with the same `tyxter-webhook-id`, `tyxter-webhook-timestamp`, and
 `tyxter-webhook-signature` headers as normal webhook delivery.
 
 You do not need to register a normal dashboard webhook endpoint for local
@@ -17,11 +17,11 @@ Build from the cloned repo:
 cp .env.example .env
 # Edit TYXTER_API_KEY and TYXTER_WEBHOOK_FORWARD_URL.
 docker compose up -d --build
-docker compose run --rm tyxter-listener doctor
-docker compose run --rm tyxter-listener status
+docker compose run --rm tyxter-cli doctor
+docker compose run --rm tyxter-cli status
 ```
 
-State is stored in the `tyxter-listener-data` Docker volume so the local signing
+State is stored in the `tyxter-cli-data` Docker volume so the local signing
 secret and cursor survive restarts.
 
 ## Use The Published Image
@@ -33,8 +33,8 @@ docker run --rm \
   -e TYXTER_API_URL=https://api.tyxter.com \
   -e TYXTER_API_KEY=tx_sandbox_... \
   -e TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:3000/webhooks/tyxter \
-  -v tyxter-listener-data:/data \
-  ghcr.io/tyxter-dev/tyxter-webhook-listener:latest listen
+  -v tyxter-cli-data:/data \
+  ghcr.io/tyxter-dev/tyxter-cli:latest listen
 ```
 
 Or use the image-only Compose file:
@@ -43,7 +43,7 @@ Or use the image-only Compose file:
 cp .env.example .env
 # Edit TYXTER_API_KEY and TYXTER_WEBHOOK_FORWARD_URL.
 docker compose -f compose.image.yaml up -d
-docker compose -f compose.image.yaml run --rm tyxter-listener doctor
+docker compose -f compose.image.yaml run --rm tyxter-cli doctor
 ```
 
 On Linux, use `--network=host` or an explicit host gateway if
@@ -52,11 +52,11 @@ On Linux, use `--network=host` or an explicit host gateway if
 ## Commands
 
 ```bash
-tyxter-webhook-listener listen
-tyxter-webhook-listener doctor
-tyxter-webhook-listener status
-tyxter-webhook-listener simulate inbound --from +15551230000 --to +15557650000 --body "hello"
-tyxter-webhook-listener tour --from +15551230000 --to +15557650000
+tyxter listen
+tyxter doctor
+tyxter status
+tyxter simulate inbound --from +15551230000 --to +15557650000 --body "hello"
+tyxter tour --from +15551230000 --to +15557650000
 ```
 
 `doctor` checks that state is writable, the sandbox listen endpoint accepts the
@@ -66,10 +66,10 @@ prints the persisted local signing secret and cursor.
 ## Agent-Driven App Tests
 
 This repo includes a Codex skill at `.agents/skills/test-sandbox-webhooks`.
-Use it when asking Codex or Claude Code to test a customer app with the listener
+Use it when asking Codex or Claude Code to test a customer app with the CLI
 container. The skill tells the agent how to discover the app webhook route, run
 the listener, execute `doctor`/`status`, simulate a sandbox inbound event, and
-report evidence from both the listener and the app.
+report evidence from both the CLI and the app.
 
 ## Run Locally Without Docker
 
@@ -81,8 +81,8 @@ pnpm dev -- listen \
   --forward-to http://localhost:3000/webhooks/tyxter
 ```
 
-The default local state directory is `.tyxter-listener`. Override it with
-`--state-dir` or `TYXTER_LISTENER_STATE_DIR`.
+The default local state directory is `.tyxter-cli`. Override it with
+`--state-dir` or `TYXTER_CLI_STATE_DIR`.
 
 ## Tour Receiver Demo
 

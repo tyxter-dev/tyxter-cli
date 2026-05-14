@@ -1,11 +1,11 @@
 ---
 name: test-sandbox-webhooks
-description: Set up and run Tyxter sandbox webhook tests against a customer app using the tyxter-webhook-listener Docker container. Use when a user asks Codex or Claude Code to test a Tyxter webhook integration, validate local sandbox webhooks, run the listener against their app, create reusable sandbox webhook smoke tests, or debug the listener + app combo.
+description: Set up and run Tyxter sandbox webhook tests against a customer app using the tyxter-cli Docker container. Use when a user asks Codex or Claude Code to test a Tyxter webhook integration, validate local sandbox webhooks, run the CLI listener against their app, create reusable sandbox webhook smoke tests, or debug the CLI + app combo.
 ---
 
 # Test Sandbox Webhooks
 
-Use the Tyxter listener container as the customer would: a sandbox API key,
+Use the Tyxter CLI container as the customer would: a sandbox API key,
 a local app webhook URL, and signed forwarded events. Do not ask the user to
 register a normal dashboard webhook endpoint for this local sandbox flow.
 
@@ -13,7 +13,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 
 - Use sandbox keys only. Stop if the key starts with `tx_live_`.
 - Never commit API keys, webhook secrets, dashboard cookies, or received payloads.
-- Prefer env files named like `.env.tyxter-listener`; add only `.example` files to git.
+- Prefer env files named like `.env.tyxter-cli`; add only `.example` files to git.
 - Treat `TYXTER_WEBHOOK_SECRET` as a local test secret shared by the listener and the app verifier.
 
 ## Workflow
@@ -24,8 +24,8 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
    - If any of these cannot be inferred safely, ask one concise question.
 
 2. Choose the listener mode.
-   - Pull image: use `ghcr.io/tyxter-dev/tyxter-webhook-listener:latest`.
-   - Build source: use `compose.yaml` plus `compose.build.yaml` from the listener repo.
+   - Pull image: use `ghcr.io/tyxter-dev/tyxter-cli:latest`.
+   - Build source: use `compose.yaml` from the Tyxter CLI repo.
    - If the customer app repo has no compose file and the user wants reusable setup, run the
      bundled script from this skill's `scripts/` directory:
 
@@ -35,7 +35,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
        --webhook-path /webhooks/tyxter
      ```
 
-     Then copy `.env.tyxter-listener.example` to `.env.tyxter-listener` and set the sandbox key.
+     Then copy `.env.tyxter-cli.example` to `.env.tyxter-cli` and set the sandbox key.
 
 3. Start the app with a known local signing secret.
    - Prefer `TYXTER_WEBHOOK_SECRET=whsec_local_tyxtest` for repeatable tests.
@@ -46,20 +46,20 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 4. Start the listener.
 
    ```bash
-   docker compose up -d
+   docker compose up -d --build
    ```
 
-   For a source build:
+   For a generated app compose file:
 
    ```bash
-   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+   docker compose -f compose.tyxter-cli.yaml --env-file .env.tyxter-cli up -d
    ```
 
 5. Run preflight checks.
 
    ```bash
-   docker compose run --rm tyxter-listener status
-   docker compose run --rm tyxter-listener doctor
+   docker compose run --rm tyxter-cli status
+   docker compose run --rm tyxter-cli doctor
    ```
 
    If `doctor` fails only because the app rejects the diagnostic event type,
@@ -68,7 +68,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 6. Fire a real sandbox webhook.
 
    ```bash
-   docker compose run --rm tyxter-listener simulate inbound \
+   docker compose run --rm tyxter-cli simulate inbound \
      --from +15551230000 \
      --to +15557650000 \
      --body "Tyxter sandbox webhook smoke"
@@ -78,7 +78,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
    the test event.
 
 7. Verify evidence from both sides.
-   - Listener: `docker compose logs --tail=80 tyxter-listener`.
+   - CLI listener: `docker compose logs --tail=80 tyxter-cli`.
    - App: route logs, test assertion, database row, queue job, or UI state.
    - Correlate by `message_id`, `trace_id`, and webhook id.
    - Confirm the app returned `2xx` only after signature verification and durable handling.

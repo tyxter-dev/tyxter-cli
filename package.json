@@ -1,10 +1,10 @@
 {
-  "name": "@tyxter/webhook-listener",
+  "name": "@tyxter/cli",
   "version": "0.1.0",
-  "description": "Local sandbox webhook companion for forwarding Tyxter events to localhost.",
+  "description": "Tyxter CLI for local sandbox webhook testing.",
   "type": "module",
   "bin": {
-    "tyxter-webhook-listener": "./dist/main.js"
+    "tyxter": "./dist/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

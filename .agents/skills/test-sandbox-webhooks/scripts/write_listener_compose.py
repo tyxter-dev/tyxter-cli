@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write a reusable Tyxter listener compose file for a customer app repo."""
+"""Write a reusable Tyxter CLI compose file for a customer app repo."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from pathlib import Path
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--compose", default="compose.tyxter-listener.yaml")
-    parser.add_argument("--env-example", default=".env.tyxter-listener.example")
+    parser.add_argument("--compose", default="compose.tyxter-cli.yaml")
+    parser.add_argument("--env-example", default=".env.tyxter-cli.example")
     parser.add_argument("--api-url", default="https://api.tyxter.com")
     parser.add_argument("--app-port", default="3000")
     parser.add_argument("--webhook-path", default="/webhooks/tyxter")
     parser.add_argument(
         "--image",
-        default="ghcr.io/tyxter-dev/tyxter-webhook-listener:latest",
+        default="ghcr.io/tyxter-dev/tyxter-cli:latest",
     )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()
@@ -44,21 +44,21 @@ def compose_text(image: str, env_file: str) -> str:
     return f"""name: tyxter-sandbox-webhook-test
 
 services:
-  tyxter-listener:
+  tyxter-cli:
     image: {image}
-    container_name: tyxter-webhook-listener
+    container_name: tyxter-cli
     restart: unless-stopped
     env_file:
       - {env_file.removesuffix(".example")}
     environment:
-      TYXTER_LISTENER_STATE_DIR: /data
+      TYXTER_CLI_STATE_DIR: /data
     volumes:
-      - tyxter-listener-data:/data
+      - tyxter-cli-data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
-  tyxter-listener-data:
+  tyxter-cli-data:
 """
 
 

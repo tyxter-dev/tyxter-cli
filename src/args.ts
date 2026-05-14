@@ -26,7 +26,14 @@ interface ParsedArgs {
 export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCommand {
   const parsed = parseArgs(argv);
   const [command = 'listen', subcommand] = parsed.positionals;
-  if (command === 'help' || command === '--help' || command === '-h') return { kind: 'help' };
+  if (
+    command === 'help' ||
+    command === '-h' ||
+    booleanOption(parsed, 'help') ||
+    booleanOption(parsed, 'h')
+  ) {
+    return { kind: 'help' };
+  }
 
   if (command === 'listen') {
     return {
@@ -122,21 +129,21 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
 
 export function helpText(): string {
   return [
-    'Tyxter webhook listener',
+    'Tyxter CLI',
     '',
     'Usage:',
-    '  tyxter-webhook-listener listen --api-key <tx_sandbox_...> --forward-to <url>',
-    '  tyxter-webhook-listener simulate inbound --api-key <tx_sandbox_...> --from <phone> --to <phone>',
-    '  tyxter-webhook-listener tour --api-key <tx_sandbox_...> --forward-to <url> --from <phone> --to <phone>',
-    '  tyxter-webhook-listener doctor --api-key <tx_sandbox_...> --forward-to <url>',
-    '  tyxter-webhook-listener status',
+    '  tyxter listen --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter simulate inbound --api-key <tx_sandbox_...> --from <phone> --to <phone>',
+    '  tyxter tour --api-key <tx_sandbox_...> --forward-to <url> --from <phone> --to <phone>',
+    '  tyxter doctor --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter status',
     '',
     'Environment:',
     '  TYXTER_API_URL=http://localhost:3001',
     '  TYXTER_API_KEY=tx_sandbox_...',
     '  TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:4242/webhooks/tyxter',
     '  TYXTER_WEBHOOK_SECRET=whsec_listen_...',
-    '  TYXTER_LISTENER_STATE_DIR=/data',
+    '  TYXTER_CLI_STATE_DIR=/data',
   ].join('\n');
 }
 
@@ -220,5 +227,9 @@ function booleanOption(parsed: ParsedArgs, flag: string): boolean {
 }
 
 function stateDirOption(parsed: ParsedArgs, env: NodeJS.ProcessEnv): string {
-  return stringOption(parsed, env, 'state-dir', 'TYXTER_LISTENER_STATE_DIR') ?? DEFAULT_STATE_DIR;
+  return (
+    stringOption(parsed, env, 'state-dir', 'TYXTER_CLI_STATE_DIR') ??
+    stringOption(parsed, env, 'state-dir', 'TYXTER_LISTENER_STATE_DIR') ??
+    DEFAULT_STATE_DIR
+  );
 }

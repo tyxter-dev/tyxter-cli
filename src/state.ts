@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { createListenSigningSecret } from './listener.js';
 
-export const DEFAULT_STATE_DIR = '.tyxter-listener';
+export const DEFAULT_STATE_DIR = '.tyxter-cli';
 export const STATE_FILE_NAME = 'listener-state.json';
 
 export interface ListenerState {
