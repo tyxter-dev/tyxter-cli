@@ -1,0 +1,24 @@
+name: tyxter-webhook-listener
+
+services:
+  tyxter-listener:
+    image: ${TYXTER_LISTENER_IMAGE:-ghcr.io/tyxter-dev/tyxter-webhook-listener:latest}
+    container_name: tyxter-webhook-listener
+    restart: unless-stopped
+    environment:
+      TYXTER_API_URL: ${TYXTER_API_URL:-https://api.tyxter.com}
+      TYXTER_API_KEY: ${TYXTER_API_KEY:?Set TYXTER_API_KEY in .env or your shell}
+      TYXTER_WEBHOOK_FORWARD_URL: ${TYXTER_WEBHOOK_FORWARD_URL:?Set TYXTER_WEBHOOK_FORWARD_URL in .env or your shell}
+      TYXTER_WEBHOOK_SECRET: ${TYXTER_WEBHOOK_SECRET:-}
+      TYXTER_WEBHOOK_CURSOR: ${TYXTER_WEBHOOK_CURSOR:-}
+      TYXTER_WEBHOOK_EVENT_TYPE: ${TYXTER_WEBHOOK_EVENT_TYPE:-}
+      TYXTER_WEBHOOK_LIMIT: ${TYXTER_WEBHOOK_LIMIT:-20}
+      TYXTER_WEBHOOK_POLL_INTERVAL_MS: ${TYXTER_WEBHOOK_POLL_INTERVAL_MS:-1000}
+      TYXTER_LISTENER_STATE_DIR: /data
+    volumes:
+      - tyxter-listener-data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  tyxter-listener-data:

@@ -1,0 +1,6 @@
+services:
+  tyxter-listener:
+    image: ${TYXTER_LISTENER_IMAGE:-tyxter-webhook-listener:local}
+    build:
+      context: .
+      dockerfile: Dockerfile

@@ -1,0 +1,33 @@
+{
+  "name": "@tyxter/webhook-listener",
+  "version": "0.1.0",
+  "description": "Local sandbox webhook companion for forwarding Tyxter events to localhost.",
+  "type": "module",
+  "bin": {
+    "tyxter-webhook-listener": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/main.ts",
+    "doctor": "tsx src/main.ts doctor",
+    "start": "node dist/main.js",
+    "status": "tsx src/main.ts status",
+    "tour:demo": "node scripts/tour-demo.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=10.0.0"
+  }
+}

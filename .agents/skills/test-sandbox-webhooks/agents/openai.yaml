@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Sandbox Webhooks"
+  short_description: "Test a customer app with the Tyxter listener"
+  default_prompt: "Use the Tyxter webhook listener container to test my app's sandbox webhook integration and report evidence."
