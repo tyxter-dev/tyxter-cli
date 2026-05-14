@@ -56,7 +56,7 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
     fetchFn: options.fetchFn,
   });
 
-  let lastListen: PollResult = { delivered: 0, cursor, hasMore: false };
+  let lastListen: PollResult = { delivered: 0, eventIds: [], cursor, hasMore: false };
   for (let attempt = 1; attempt <= options.pollAttempts; attempt++) {
     options.onStep?.(`listen attempt ${attempt}`);
     lastListen = await pollOnce({

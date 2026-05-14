@@ -15,6 +15,7 @@ export interface ListenerOptions {
   readonly apiKey: string;
   readonly cursor?: string;
   readonly eventType?: string;
+  readonly eventTypes?: readonly string[];
   readonly limit?: number;
   readonly waitMs?: number;
   readonly fetchFn?: FetchLike;
@@ -35,6 +36,7 @@ export interface RunListenerOptions extends ForwardingListenerOptions {
   readonly onRateLimited?: (details: { retryAfterMs: number }) => void | Promise<void>;
   readonly onBatch?: (details: {
     delivered: number;
+    eventIds: readonly string[];
     cursor: string | null;
     hasMore: boolean;
   }) => void | Promise<void>;
@@ -45,6 +47,7 @@ export interface RunListenerOptions extends ForwardingListenerOptions {
 
 export interface PollResult {
   readonly delivered: number;
+  readonly eventIds: readonly string[];
   readonly cursor: string | null;
   readonly hasMore: boolean;
   readonly nextPollAfterMs?: number;
@@ -67,6 +70,9 @@ export async function readListenPage(options: ListenerOptions): Promise<ListenPa
   url.searchParams.set('limit', String(options.limit ?? 20));
   if (options.cursor) url.searchParams.set('cursor', options.cursor);
   if (options.eventType) url.searchParams.set('event_type', options.eventType);
+  if (options.eventTypes && options.eventTypes.length > 0) {
+    url.searchParams.set('event_types', options.eventTypes.join(','));
+  }
   if (options.waitMs !== undefined) url.searchParams.set('wait_ms', String(options.waitMs));
 
   const response = await fetchFn(url, {
@@ -89,6 +95,7 @@ export async function readListenPage(options: ListenerOptions): Promise<ListenPa
 export async function pollOnce(options: ForwardingListenerOptions): Promise<PollResult> {
   const page = await readListenPage(options);
   const fetchFn = options.fetchFn ?? fetch;
+  const eventIds: string[] = [];
   for (const event of page.data) {
     await forwardEvent({
       eventId: event.id,
@@ -98,10 +105,12 @@ export async function pollOnce(options: ForwardingListenerOptions): Promise<Poll
       fetchFn,
       now: options.now,
     });
+    eventIds.push(event.id);
   }
 
   return {
     delivered: page.data.length,
+    eventIds,
     cursor: page.cursor,
     hasMore: page.hasMore,
     nextPollAfterMs: page.nextPollAfterMs,
@@ -111,6 +120,7 @@ export async function pollOnce(options: ForwardingListenerOptions): Promise<Poll
 export async function runListener(options: RunListenerOptions): Promise<PollResult> {
   let cursor = options.cursor ?? null;
   let delivered = 0;
+  const forwardedEventIds: string[] = [];
   let hasMore = false;
   let nextPollAfterMs: number | undefined;
   let idleDelayMs = options.pollIntervalMs;
@@ -133,10 +143,16 @@ export async function runListener(options: RunListenerOptions): Promise<PollResu
     }
 
     delivered += result.delivered;
+    forwardedEventIds.push(...result.eventIds);
     cursor = result.cursor ?? cursor;
     hasMore = result.hasMore;
     nextPollAfterMs = result.nextPollAfterMs;
-    await options.onBatch?.({ delivered: result.delivered, cursor, hasMore });
+    await options.onBatch?.({
+      delivered: result.delivered,
+      eventIds: result.eventIds,
+      cursor,
+      hasMore,
+    });
 
     if (options.once) break;
     if (!hasMore) {
@@ -154,10 +170,10 @@ export async function runListener(options: RunListenerOptions): Promise<PollResu
     }
   } while (!options.signal?.aborted);
 
-  return { delivered, cursor, hasMore, nextPollAfterMs };
+  return { delivered, eventIds: forwardedEventIds, cursor, hasMore, nextPollAfterMs };
 }
 
-async function forwardEvent(input: {
+export async function forwardEvent(input: {
   eventId: string;
   payload: unknown;
   forwardTo: string;

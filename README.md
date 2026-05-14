@@ -68,9 +68,14 @@ On Linux, use `--network=host` or an explicit host gateway if
 ```bash
 tyxter listen
 tyxter listen --from-now
+tyxter listen --events message.received,message.delivered
+tyxter listen --print-secret
 tyxter checkpoint
 tyxter doctor
 tyxter status
+tyxter status --print-secret
+tyxter events resend evt_<id> --forward-to http://localhost:3000/webhooks/tyxter
+tyxter logs tail --events message.received --status failed --last 10
 tyxter simulate inbound --from +15551230000 --to +15557650000 --body "hello"
 tyxter tour --from +15551230000 --to +15557650000
 ```
@@ -89,6 +94,24 @@ developer ergonomics, not security.
 
 `TYXTER_WEBHOOK_POLL_INTERVAL_MS` is the base retry/backoff interval. It is not
 a fixed tight polling loop when no events are available.
+
+Use `--events` or `TYXTER_WEBHOOK_EVENTS` to listen for multiple event types.
+The older `--event-type` and `TYXTER_WEBHOOK_EVENT_TYPE` options still work for
+single-event filters.
+
+`listen --print-secret` and `status --print-secret` print only the local signing
+secret and exit, which is useful for wiring a receiver without exposing the
+full state file. `listen --json` and `logs tail --json` write JSON Lines for
+streaming consumers; finite commands use compact JSON when `--json` is set.
+
+`events resend` replays one sandbox listen event to a local `--forward-to`
+target using the CLI signing secret. It accepts either the raw listen event id
+or the payload id with the `evt_` prefix. This is local replay, not server-side
+delivery to registered webhook endpoints.
+
+`logs tail` follows registered webhook delivery events from
+`GET /v1/webhook-events`. By default it starts from now; add `--last N` to print
+recent historical events before tailing.
 
 If your local app verifies webhook signatures, configure it with the same local
 secret used by the CLI. Either set `TYXTER_WEBHOOK_SECRET` yourself and pass the

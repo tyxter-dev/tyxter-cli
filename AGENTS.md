@@ -18,13 +18,16 @@ volume, or in `.tyxter-cli/` when running outside Docker.
 Normal listener runs send `wait_ms=25000`, back off idle loops up to
 `TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS`, and honor server `429 Retry-After`
 responses. `TYXTER_WEBHOOK_POLL_INTERVAL_MS` is the base interval, not a fixed
-tight loop. The API still owns abuse protection server-side.
+tight loop. `TYXTER_WEBHOOK_EVENTS` accepts comma-separated event filters. The
+API still owns abuse protection server-side.
 
 ## Repo Map
 
 - `src/main.ts` — CLI entrypoint and command dispatcher.
 - `src/args.ts` — `parseCli` and help text. Adjust here when adding flags.
 - `src/checkpoint.ts` — advances the listen cursor without forwarding events.
+- `src/events.ts` — local replay for one sandbox listen event.
+- `src/logs.ts` — webhook delivery log tailing via `/v1/webhook-events`.
 - `src/listener.ts` — long-running poll + forward loop.
 - `src/simulate.ts` — `simulate inbound` (creates one sandbox event).
 - `src/tour.ts` — checkpoint old events, simulate one, watch it land.
@@ -116,6 +119,8 @@ State defaults to `./.tyxter-cli/`; override with `--state-dir` or
   `feature.test.ts`). Mock network calls; do not hit `api.tyxter.com` in tests.
 - Match existing logging style: single-line, present tense, no emoji, no
   trailing punctuation noise.
+- Keep streaming `--json` output as JSON Lines only. Do not mix human status
+  text into `listen --json` or `logs tail --json`.
 
 ## Quality Gates
 

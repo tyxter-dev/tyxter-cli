@@ -25,6 +25,7 @@ describe('CLI argument parsing', () => {
         waitMs: 25000,
         pollIntervalMs: 1000,
         maxPollIntervalMs: 30000,
+        json: false,
       },
     });
   });
@@ -68,6 +69,52 @@ describe('CLI argument parsing', () => {
     });
   });
 
+  it('parses multi-event listen filters', () => {
+    const parsed = parseCli(
+      ['listen', '--api-key', 'tx_sandbox_test', '--forward-to', 'http://127.0.0.1/hook'],
+      { TYXTER_WEBHOOK_EVENTS: 'message.received,message.delivered' },
+    );
+
+    expect(parsed).toMatchObject({
+      kind: 'listen',
+      options: {
+        eventTypes: ['message.received', 'message.delivered'],
+      },
+    });
+  });
+
+  it('rejects mixed event filter flags', () => {
+    expect(() =>
+      parseCli(
+        [
+          'listen',
+          '--api-key',
+          'tx_sandbox_test',
+          '--forward-to',
+          'http://127.0.0.1/hook',
+          '--event-type',
+          'message.received',
+          '--events',
+          'message.delivered',
+        ],
+        {},
+      ),
+    ).toThrow('--event-type and --events cannot be used together.');
+  });
+
+  it('parses print-secret without requiring API or forward URL', () => {
+    expect(parseCli(['listen', '--print-secret', '--state-dir', '/data'], {})).toEqual({
+      kind: 'print-secret',
+      options: {
+        signingSecret: undefined,
+        stateDir: '/data',
+      },
+    });
+    expect(parseCli(['status', '--print-secret'], {})).toMatchObject({
+      kind: 'print-secret',
+    });
+  });
+
   it('parses checkpoint without a forward URL', () => {
     const parsed = parseCli(['checkpoint', '--api-key', 'tx_sandbox_test'], {
       TYXTER_WEBHOOK_EVENT_TYPE: 'message.received',
@@ -84,6 +131,63 @@ describe('CLI argument parsing', () => {
         eventType: 'message.received',
         limit: 100,
         stateDir: '/data',
+        json: false,
+      },
+    });
+  });
+
+  it('parses events resend', () => {
+    const parsed = parseCli(
+      [
+        'events',
+        'resend',
+        'evt_outbox_123',
+        '--api-key',
+        'tx_sandbox_test',
+        '--forward-to',
+        'http://127.0.0.1/hook',
+        '--json',
+      ],
+      {},
+    );
+
+    expect(parsed).toMatchObject({
+      kind: 'events-resend',
+      options: {
+        eventId: 'evt_outbox_123',
+        apiKey: 'tx_sandbox_test',
+        forwardTo: 'http://127.0.0.1/hook',
+        json: true,
+      },
+    });
+  });
+
+  it('parses logs tail filters', () => {
+    const parsed = parseCli(
+      [
+        'logs',
+        'tail',
+        '--api-key',
+        'tx_sandbox_test',
+        '--events',
+        'message.sent,message.failed',
+        '--status',
+        'failed',
+        '--last',
+        '10',
+        '--json',
+      ],
+      {},
+    );
+
+    expect(parsed).toMatchObject({
+      kind: 'logs-tail',
+      options: {
+        apiKey: 'tx_sandbox_test',
+        eventTypes: ['message.sent', 'message.failed'],
+        status: 'failed',
+        last: 10,
+        json: true,
       },
     });
   });
@@ -111,7 +215,7 @@ describe('CLI argument parsing', () => {
 
     expect(parsed).toEqual({
       kind: 'status',
-      options: { stateDir: '/data' },
+      options: { stateDir: '/data', json: false },
     });
   });
 
@@ -120,7 +224,7 @@ describe('CLI argument parsing', () => {
 
     expect(parsed).toEqual({
       kind: 'status',
-      options: { stateDir: '/old-data' },
+      options: { stateDir: '/old-data', json: false },
     });
   });
 });

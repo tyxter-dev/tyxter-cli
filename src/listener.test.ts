@@ -67,6 +67,7 @@ describe('webhook listener', () => {
 
     expect(result).toEqual({
       delivered: 1,
+      eventIds: ['whev_123'],
       cursor: 'cur_123',
       hasMore: false,
       nextPollAfterMs: 1000,
@@ -100,6 +101,27 @@ describe('webhook listener', () => {
         toleranceSeconds: Number.MAX_SAFE_INTEGER,
       }),
     ).toBe(true);
+  });
+
+  it('sends multi-event filters with event_types', async () => {
+    let listenUrl = '';
+    const fetchFn: FetchLike = async (input) => {
+      listenUrl = String(input);
+      return Response.json(listenResponse([], { cursor: null }));
+    };
+
+    await pollOnce({
+      apiUrl: 'http://api.test',
+      apiKey: 'tx_sandbox_test',
+      forwardTo: 'http://127.0.0.1:4242/webhooks/tyxter',
+      signingSecret: 'whsec_test',
+      eventTypes: ['message.received', 'message.delivered'],
+      fetchFn,
+    });
+
+    expect(listenUrl).toBe(
+      'http://api.test/v1/webhook-events/listen?limit=20&event_types=message.received%2Cmessage.delivered',
+    );
   });
 
   it('backs off idle polling, uses server guidance, and resets after delivered events', async () => {
@@ -139,6 +161,7 @@ describe('webhook listener', () => {
     });
 
     expect(result.delivered).toBe(1);
+    expect(result.eventIds).toEqual(['whev_backoff']);
     expect(sleepMs).toEqual([3000, 2000, 1000]);
   });
 
