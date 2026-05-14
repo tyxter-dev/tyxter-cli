@@ -1,5 +1,6 @@
 import type { FetchLike } from './http.js';
-import { pollOnce, readListenPage, type PollResult } from './listener.js';
+import { checkpointListenCursor } from './checkpoint.js';
+import { pollOnce, type PollResult } from './listener.js';
 import type { MessageResponse } from './schemas.js';
 import { simulateInboundMessage } from './simulate.js';
 
@@ -31,7 +32,15 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
   let cursor = options.cursor ?? null;
   if (!cursor) {
     options.onStep?.('checkpoint listen cursor');
-    cursor = await checkpointListenCursor(options);
+    cursor = (
+      await checkpointListenCursor({
+        apiUrl: options.apiUrl,
+        apiKey: options.apiKey,
+        eventType: 'message.received',
+        limit: 100,
+        fetchFn: options.fetchFn,
+      })
+    ).cursor;
   }
 
   options.onStep?.('simulate inbound');
@@ -73,25 +82,6 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
   throw new Error(
     `Tour did not receive a message.received webhook after ${options.pollAttempts} listen attempts.`,
   );
-}
-
-async function checkpointListenCursor(options: TourOptions): Promise<string | null> {
-  let cursor: string | null = null;
-  let hasMore = false;
-  do {
-    const page = await readListenPage({
-      apiUrl: options.apiUrl,
-      apiKey: options.apiKey,
-      eventType: 'message.received',
-      limit: 100,
-      cursor: cursor ?? undefined,
-      fetchFn: options.fetchFn,
-    });
-    cursor = page.cursor ?? cursor;
-    hasMore = page.hasMore;
-  } while (hasMore);
-
-  return cursor;
 }
 
 function sleep(ms: number): Promise<void> {

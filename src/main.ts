@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { parseCli, helpText } from './args.js';
+import { checkpointListenCursor } from './checkpoint.js';
 import { runDoctor } from './doctor.js';
 import { HttpStatusError } from './http.js';
 import { runListener } from './listener.js';
@@ -18,19 +19,43 @@ async function main(): Promise<void> {
     }
 
     if (command.kind === 'listen') {
-      const { stateDir, signingSecret: explicitSigningSecret, ...listenOptions } = command.options;
+      const {
+        stateDir,
+        signingSecret: explicitSigningSecret,
+        fromNow,
+        ...listenOptions
+      } = command.options;
       const listenerState = await resolveListenerState({
         stateDir,
         signingSecret: explicitSigningSecret,
         cursor: listenOptions.cursor,
       });
+      let startCursor = listenerState.cursor;
+      if (fromNow) {
+        const checkpoint = await checkpointListenCursor({
+          apiUrl: listenOptions.apiUrl,
+          apiKey: listenOptions.apiKey,
+          cursor: startCursor ?? undefined,
+          eventType: listenOptions.eventType,
+          limit: listenOptions.limit,
+        });
+        startCursor = checkpoint.cursor ?? startCursor;
+        await writeListenerState(stateDir, {
+          signingSecret: listenerState.signingSecret,
+          cursor: startCursor,
+          updatedAt: new Date().toISOString(),
+        });
+        console.log(
+          `Checkpointed ${checkpoint.skipped} existing event${checkpoint.skipped === 1 ? '' : 's'}; cursor=${startCursor ?? ''}`,
+        );
+      }
       const controller = new AbortController();
       process.once('SIGINT', () => controller.abort());
       process.once('SIGTERM', () => controller.abort());
       await runListener({
         ...listenOptions,
         signingSecret: listenerState.signingSecret,
-        cursor: listenerState.cursor ?? undefined,
+        cursor: startCursor ?? undefined,
         signal: controller.signal,
         onStart: ({ signingSecret, cursor }) => {
           console.log(`Forwarding sandbox webhooks to ${listenOptions.forwardTo}`);
@@ -53,6 +78,39 @@ async function main(): Promise<void> {
           }
         },
       });
+      return;
+    }
+
+    if (command.kind === 'checkpoint') {
+      const { stateDir, signingSecret: explicitSigningSecret, ...checkpointOptions } =
+        command.options;
+      const listenerState = await resolveListenerState({
+        stateDir,
+        signingSecret: explicitSigningSecret,
+        cursor: checkpointOptions.cursor,
+      });
+      const result = await checkpointListenCursor({
+        ...checkpointOptions,
+        cursor: listenerState.cursor ?? undefined,
+      });
+      await writeListenerState(stateDir, {
+        signingSecret: listenerState.signingSecret,
+        cursor: result.cursor ?? listenerState.cursor,
+        updatedAt: new Date().toISOString(),
+      });
+      console.log(
+        JSON.stringify(
+          {
+            object: 'tyxter_cli_checkpoint',
+            state_dir: stateDir,
+            skipped: result.skipped,
+            pages: result.pages,
+            cursor: result.cursor ?? listenerState.cursor,
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
 

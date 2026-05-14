@@ -27,6 +27,47 @@ describe('CLI argument parsing', () => {
     });
   });
 
+  it('parses listen from-now checkpoint mode', () => {
+    const parsed = parseCli(
+      [
+        'listen',
+        '--from-now',
+        '--api-key',
+        'tx_sandbox_test',
+        '--forward-to',
+        'http://127.0.0.1:4242/hook',
+      ],
+      {},
+    );
+
+    expect(parsed).toMatchObject({
+      kind: 'listen',
+      options: {
+        fromNow: true,
+      },
+    });
+  });
+
+  it('parses checkpoint without a forward URL', () => {
+    const parsed = parseCli(['checkpoint', '--api-key', 'tx_sandbox_test'], {
+      TYXTER_WEBHOOK_EVENT_TYPE: 'message.received',
+      TYXTER_CLI_STATE_DIR: '/data',
+    });
+
+    expect(parsed).toEqual({
+      kind: 'checkpoint',
+      options: {
+        apiUrl: 'http://localhost:3001',
+        apiKey: 'tx_sandbox_test',
+        signingSecret: undefined,
+        cursor: undefined,
+        eventType: 'message.received',
+        limit: 100,
+        stateDir: '/data',
+      },
+    });
+  });
+
   it('parses doctor from env and flags', () => {
     const parsed = parseCli(['doctor', '--state-dir', '/data'], {
       TYXTER_API_URL: 'https://api.tyxter.test',

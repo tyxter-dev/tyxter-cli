@@ -1,5 +1,6 @@
 import type { DoctorOptions } from './doctor.js';
 import { createListenSigningSecret, type RunListenerOptions } from './listener.js';
+import type { CheckpointOptions } from './checkpoint.js';
 import type { SimulateInboundOptions } from './simulate.js';
 import { DEFAULT_STATE_DIR } from './state.js';
 import type { StatusOptions } from './status.js';
@@ -8,12 +9,19 @@ import type { TourOptions } from './tour.js';
 export type CliCommand =
   | { kind: 'help' }
   | { kind: 'listen'; options: CliListenOptions }
+  | { kind: 'checkpoint'; options: CliCheckpointOptions }
   | { kind: 'simulate-inbound'; options: SimulateInboundOptions }
   | { kind: 'tour'; options: TourOptions }
   | { kind: 'doctor'; options: DoctorOptions }
   | { kind: 'status'; options: StatusOptions };
 
 export interface CliListenOptions extends Omit<RunListenerOptions, 'signingSecret'> {
+  readonly signingSecret?: string;
+  readonly fromNow: boolean;
+  readonly stateDir: string;
+}
+
+export interface CliCheckpointOptions extends CheckpointOptions {
   readonly signingSecret?: string;
   readonly stateDir: string;
 }
@@ -54,6 +62,22 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
           1_000,
         ),
         once: booleanOption(parsed, 'once'),
+        fromNow: booleanOption(parsed, 'from-now'),
+        stateDir: stateDirOption(parsed, env),
+      },
+    };
+  }
+
+  if (command === 'checkpoint') {
+    return {
+      kind: 'checkpoint',
+      options: {
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
+        signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
+        cursor: stringOption(parsed, env, 'cursor', 'TYXTER_WEBHOOK_CURSOR'),
+        eventType: stringOption(parsed, env, 'event-type', 'TYXTER_WEBHOOK_EVENT_TYPE'),
+        limit: numberOption(parsed, env, 'limit', 'TYXTER_WEBHOOK_LIMIT', 100),
         stateDir: stateDirOption(parsed, env),
       },
     };
@@ -133,6 +157,8 @@ export function helpText(): string {
     '',
     'Usage:',
     '  tyxter listen --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter listen --from-now --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter checkpoint --api-key <tx_sandbox_...>',
     '  tyxter simulate inbound --api-key <tx_sandbox_...> --from <phone> --to <phone>',
     '  tyxter tour --api-key <tx_sandbox_...> --forward-to <url> --from <phone> --to <phone>',
     '  tyxter doctor --api-key <tx_sandbox_...> --forward-to <url>',

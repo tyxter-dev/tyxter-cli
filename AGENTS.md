@@ -19,6 +19,7 @@ volume, or in `.tyxter-cli/` when running outside Docker.
 
 - `src/main.ts` — CLI entrypoint and command dispatcher.
 - `src/args.ts` — `parseCli` and help text. Adjust here when adding flags.
+- `src/checkpoint.ts` — advances the listen cursor without forwarding events.
 - `src/listener.ts` — long-running poll + forward loop.
 - `src/simulate.ts` — `simulate inbound` (creates one sandbox event).
 - `src/tour.ts` — checkpoint old events, simulate one, watch it land.
@@ -42,7 +43,13 @@ this listener replaces.
    - `TYXTER_API_KEY` (must start with `tx_sandbox_`)
    - `TYXTER_WEBHOOK_FORWARD_URL` (use `http://host.docker.internal:<port>/<path>`
      when the listener runs in Docker and the app runs on the host)
-2. Start the listener — build from source by default:
+2. Checkpoint existing sandbox events when this is a first run for an existing
+   sandbox and the user does not want historical replay:
+   ```bash
+   docker compose build
+   docker compose run --rm tyxter-cli checkpoint
+   ```
+3. Start the listener — build from source by default:
    ```bash
    docker compose up -d --build
    ```
@@ -50,12 +57,12 @@ this listener replaces.
    ```bash
    docker compose -f compose.image.yaml up -d
    ```
-3. Run health checks:
+4. Run health checks:
    ```bash
    docker compose run --rm tyxter-cli doctor
    docker compose run --rm tyxter-cli status
    ```
-4. Fire a real sandbox event when an end-to-end check is needed:
+5. Fire a real sandbox event when an end-to-end check is needed:
    ```bash
    docker compose run --rm tyxter-cli simulate inbound \
      --from +15551230000 \
@@ -67,7 +74,7 @@ this listener replaces.
    docker compose run --rm tyxter-cli tour \
      --from +15551230000 --to +15557650000
    ```
-5. Report back with:
+6. Report back with:
    - whether the container is running
    - whether `doctor` passed (note diagnostic-only failures separately)
    - the local signing secret from `status`
