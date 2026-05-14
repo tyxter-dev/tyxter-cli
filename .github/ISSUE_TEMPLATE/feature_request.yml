@@ -1,0 +1,70 @@
+name: Feature request
+description: Suggest an improvement to Tyxter CLI.
+title: "[Feature]: "
+labels:
+  - enhancement
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests should describe a customer workflow and the CLI behavior that would make it easier.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: This request does not include API keys, webhook secrets, private payloads, or customer data.
+          required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Customer workflow
+      description: What are you trying to do?
+      placeholder: I want to test my local app's Tyxter webhook route from Docker without manually editing Compose files.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard, confusing, or missing today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the command, flag, output, or documentation change you want.
+      render: shell
+      placeholder: tyxter listen --forward-to http://localhost:3000/webhooks/tyxter --print-compose
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workaround are you using now?
+    validations:
+      required: false
+  - type: checkboxes
+    id: surfaces
+    attributes:
+      label: Relevant surfaces
+      options:
+        - label: Docker image
+        - label: Docker Compose
+        - label: Local pnpm/source runs
+        - label: "`listen`"
+        - label: "`doctor`"
+        - label: "`status`"
+        - label: "`simulate`"
+        - label: "`tour`"
+        - label: Documentation
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility notes
+      description: Would this change existing commands, output JSON, environment variables, or webhook headers?
+    validations:
+      required: false

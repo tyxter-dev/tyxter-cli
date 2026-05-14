@@ -1,0 +1,53 @@
+name: Support question
+description: Ask a public setup or usage question about Tyxter CLI.
+title: "[Question]: "
+labels:
+  - question
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Public questions should be about this CLI or local sandbox webhook testing. For account, billing, dashboard, or production delivery issues, use Tyxter support.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed API keys, webhook secrets, phone numbers, message bodies, authorization headers, cookies, and private payloads.
+          required: true
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic
+      options:
+        - Docker setup
+        - Published image
+        - Local source setup
+        - Webhook signature verification
+        - Agent-driven app testing
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      placeholder: What are you trying to understand or accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried?
+      description: Include commands and sanitized output when useful.
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: OS, Docker version, Node version, app framework, and whether you are using Docker or source.
+    validations:
+      required: false

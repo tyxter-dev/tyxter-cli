@@ -1,0 +1,103 @@
+name: Bug report
+description: Report a reproducible Tyxter CLI issue.
+title: "[Bug]: "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Tyxter CLI. Public issues must not include API keys, webhook secrets, real phone numbers, message bodies, cookies, or private payloads.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed API keys, webhook secrets, phone numbers, message bodies, authorization headers, cookies, and private payloads.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: CLI version or commit
+      description: Use the released version, Docker image tag, or commit SHA.
+      placeholder: "0.1.0, latest, or f52dc1e"
+    validations:
+      required: true
+  - type: dropdown
+    id: install_path
+    attributes:
+      label: How are you running Tyxter CLI?
+      options:
+        - Docker Compose from this repo
+        - Published Docker image
+        - pnpm dev from source
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Paste the exact command with secrets redacted.
+      render: shell
+      placeholder: docker compose run --rm tyxter-cli doctor
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Paste redacted `doctor`, `status`, or container log output. Redact `signing_secret`.
+      render: text
+      placeholder: |
+        {
+          "object": "tyxter_cli_status",
+          "signing_secret": "whsec_redacted"
+        }
+    validations:
+      required: false
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, Docker version, Node version, pnpm version, and app framework if relevant.
+      placeholder: |
+        OS: Windows 11
+        Docker: Docker Desktop 4.x
+        Node: 22.x
+        pnpm: 10.x
+        App framework: Next.js route handler
+    validations:
+      required: true
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Did this work before?
+      options:
+        - I do not know
+        - Yes, this is a regression
+        - No, this has never worked for me
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Add links to public reproductions or sanitized screenshots.
+    validations:
+      required: false

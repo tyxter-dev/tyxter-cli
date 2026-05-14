@@ -71,6 +71,13 @@ container. The skill tells the agent how to discover the app webhook route, run
 the listener, execute `doctor`/`status`, simulate a sandbox inbound event, and
 report evidence from both the CLI and the app.
 
+## Contributing
+
+Customer bug reports, setup notes, and focused pull requests are welcome. Read
+`CONTRIBUTING.md` and `ISSUE_GUIDELINES.md` before opening a public issue or
+pull request, especially the redaction rules for API keys, webhook secrets,
+phone numbers, and payloads.
+
 ## Run Locally Without Docker
 
 ```bash

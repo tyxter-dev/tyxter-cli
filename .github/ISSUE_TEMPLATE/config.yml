@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Tyxter account or production support
+    url: https://tyxter.com
+    about: Use support for account-specific dashboard, billing, or production delivery questions.
+  - name: Security or private data report
+    url: https://tyxter.com
+    about: Do not report vulnerabilities, API keys, or private payloads in public issues.
