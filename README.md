@@ -11,37 +11,39 @@ sandbox testing. The listener reads sandbox events through
 
 ## Quick Start
 
+Build from the cloned repo:
+
 ```bash
 cp .env.example .env
 # Edit TYXTER_API_KEY and TYXTER_WEBHOOK_FORWARD_URL.
-docker compose up -d
+docker compose up -d --build
 docker compose run --rm tyxter-listener doctor
 docker compose run --rm tyxter-listener status
 ```
 
-The compose file pulls `ghcr.io/tyxter-dev/tyxter-webhook-listener:latest` by
-default. State is stored in the `tyxter-listener-data` Docker volume so the
-local signing secret and cursor survive restarts.
+State is stored in the `tyxter-listener-data` Docker volume so the local signing
+secret and cursor survive restarts.
 
-## Build From Source
+## Use The Published Image
 
-```bash
-cp .env.example .env
-# Edit TYXTER_API_KEY and TYXTER_WEBHOOK_FORWARD_URL.
-docker compose -f compose.yaml -f compose.build.yaml up -d --build
-docker compose -f compose.yaml -f compose.build.yaml run --rm tyxter-listener doctor
-```
-
-Or build and run manually:
+Run the image directly:
 
 ```bash
-docker build -t tyxter-webhook-listener .
 docker run --rm \
   -e TYXTER_API_URL=https://api.tyxter.com \
   -e TYXTER_API_KEY=tx_sandbox_... \
   -e TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:3000/webhooks/tyxter \
   -v tyxter-listener-data:/data \
-  tyxter-webhook-listener listen
+  ghcr.io/tyxter-dev/tyxter-webhook-listener:latest listen
+```
+
+Or use the image-only Compose file:
+
+```bash
+cp .env.example .env
+# Edit TYXTER_API_KEY and TYXTER_WEBHOOK_FORWARD_URL.
+docker compose -f compose.image.yaml up -d
+docker compose -f compose.image.yaml run --rm tyxter-listener doctor
 ```
 
 On Linux, use `--network=host` or an explicit host gateway if

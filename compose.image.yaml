@@ -2,10 +2,7 @@ name: tyxter-webhook-listener
 
 services:
   tyxter-listener:
-    image: ${TYXTER_LISTENER_IMAGE:-tyxter-webhook-listener:local}
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${TYXTER_LISTENER_IMAGE:-ghcr.io/tyxter-dev/tyxter-webhook-listener:latest}
     container_name: tyxter-webhook-listener
     restart: unless-stopped
     environment:

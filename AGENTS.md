@@ -17,13 +17,13 @@ when the user asks to test a customer app with the listener + app combo.
 2. Start the listener:
 
    ```bash
-   docker compose up -d
+   docker compose up -d --build
    ```
 
-3. If the user wants to build from source instead of pulling the image:
+3. If the user wants to use the published image instead of building from source:
 
    ```bash
-   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+   docker compose -f compose.image.yaml up -d
    ```
 
 4. Run health checks:
