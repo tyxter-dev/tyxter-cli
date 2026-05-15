@@ -6,7 +6,7 @@ services:
     container_name: tyxter-cli
     restart: unless-stopped
     environment:
-      TYXTER_API_URL: ${TYXTER_API_URL:-https://api.tyxter.com}
+      TYXTER_API_URL: ${TYXTER_API_URL:-https://api.tyxter.dev}
       TYXTER_API_KEY: ${TYXTER_API_KEY:?Set TYXTER_API_KEY in .env or your shell}
       TYXTER_WEBHOOK_FORWARD_URL: ${TYXTER_WEBHOOK_FORWARD_URL:?Set TYXTER_WEBHOOK_FORWARD_URL in .env or your shell}
       TYXTER_WEBHOOK_SECRET: ${TYXTER_WEBHOOK_SECRET:-}

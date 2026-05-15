@@ -38,7 +38,7 @@ Run the image directly:
 
 ```bash
 docker run --rm \
-  -e TYXTER_API_URL=https://api.tyxter.com \
+  -e TYXTER_API_URL=https://api.tyxter.dev \
   -e TYXTER_API_KEY=tx_sandbox_... \
   -e TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:3000/webhooks/tyxter \
   -v tyxter-cli-data:/data \
@@ -68,7 +68,7 @@ On Linux, use `--network=host` or an explicit host gateway if
 ```bash
 tyxter listen
 tyxter listen --from-now
-tyxter listen --events message.received,message.delivered
+tyxter listen --events "message.received,message.delivered"
 tyxter listen --print-secret
 tyxter checkpoint
 tyxter doctor
@@ -97,7 +97,8 @@ a fixed tight polling loop when no events are available.
 
 Use `--events` or `TYXTER_WEBHOOK_EVENTS` to listen for multiple event types.
 The older `--event-type` and `TYXTER_WEBHOOK_EVENT_TYPE` options still work for
-single-event filters.
+single-event filters. Quote comma-separated `--events` values in shell examples
+so the CLI receives one argument.
 
 `listen --print-secret` and `status --print-secret` print only the local signing
 secret and exit, which is useful for wiring a receiver without exposing the
@@ -160,7 +161,7 @@ phone numbers, and payloads.
 ```bash
 pnpm install
 pnpm dev -- listen \
-  --api-url https://api.tyxter.com \
+  --api-url https://api.tyxter.dev \
   --api-key tx_sandbox_... \
   --forward-to http://localhost:3000/webhooks/tyxter \
   --from-now

@@ -54,36 +54,39 @@ const server = createServer((req, res) => {
 await listen(server, port);
 console.log(`Tour demo receiver listening at ${forwardTo}`);
 
+const tourArgs = [
+  'tour',
+  '--api-url',
+  apiUrl,
+  '--api-key',
+  apiKey,
+  '--forward-to',
+  forwardTo,
+  '--secret',
+  secret,
+  '--from',
+  from,
+  '--to',
+  to,
+  '--body',
+  body,
+  '--poll-attempts',
+  '10',
+];
+const childArgs = [
+  'exec',
+  'tsx',
+  'src/main.ts',
+  ...tourArgs,
+];
 const child = spawn(
-  process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
-  [
-    'run',
-    'dev',
-    '--',
-    'tour',
-    '--api-url',
-    apiUrl,
-    '--api-key',
-    apiKey,
-    '--forward-to',
-    forwardTo,
-    '--secret',
-    secret,
-    '--from',
-    from,
-    '--to',
-    to,
-    '--body',
-    body,
-    '--poll-attempts',
-    '10',
-  ],
+  process.platform === 'win32' ? 'cmd.exe' : 'pnpm',
+  process.platform === 'win32' ? ['/d', '/s', '/c', 'pnpm', ...childArgs] : childArgs,
   {
     cwd: appRoot,
     stdio: 'inherit',
   },
 );
-
 const timeout = setTimeout(() => {
   child.kill();
   server.close();

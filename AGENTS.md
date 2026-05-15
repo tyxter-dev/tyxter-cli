@@ -97,7 +97,7 @@ If the user asks to test a customer app with the listener + app combo, use the
 ```bash
 pnpm install
 pnpm dev -- listen \
-  --api-url https://api.tyxter.com \
+  --api-url https://api.tyxter.dev \
   --api-key tx_sandbox_... \
   --forward-to http://localhost:3000/webhooks/tyxter
 ```
@@ -116,7 +116,7 @@ State defaults to `./.tyxter-cli/`; override with `--state-dir` or
 - Keep secrets and cursors flowing through `src/state.ts`. Do not read or
   write the state directory from other modules.
 - Add a Vitest file next to any new module (`feature.ts` →
-  `feature.test.ts`). Mock network calls; do not hit `api.tyxter.com` in tests.
+  `feature.test.ts`). Mock network calls; do not hit `api.tyxter.dev` in tests.
 - Match existing logging style: single-line, present tense, no emoji, no
   trailing punctuation noise.
 - Keep streaming `--json` output as JSON Lines only. Do not mix human status

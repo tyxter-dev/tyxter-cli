@@ -275,7 +275,7 @@ export function helpText(): string {
     'Usage:',
     '  tyxter listen --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter listen --from-now --api-key <tx_sandbox_...> --forward-to <url>',
-    '  tyxter listen --events message.received,message.delivered --api-key <tx_sandbox_...> --forward-to <url>',
+    '  tyxter listen --events "message.received,message.delivered" --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter listen --print-secret',
     '  tyxter listen --wait-ms 25000 --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter checkpoint --api-key <tx_sandbox_...>',
