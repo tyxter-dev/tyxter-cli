@@ -136,6 +136,69 @@ describe('CLI argument parsing', () => {
     });
   });
 
+  it('parses sandbox inbound channel for simulate and tour commands', () => {
+    const simulate = parseCli(
+      [
+        'simulate',
+        'inbound',
+        '--api-key',
+        'tx_sandbox_test',
+        '--channel',
+        'instagram',
+        '--from',
+        'igsid_123',
+        '--to',
+        'ig_business_1',
+      ],
+      {},
+    );
+    expect(simulate).toMatchObject({
+      kind: 'simulate-inbound',
+      options: {
+        channel: 'instagram',
+        from: 'igsid_123',
+        to: 'ig_business_1',
+      },
+    });
+
+    const tour = parseCli(
+      ['tour', '--api-key', 'tx_sandbox_test', '--forward-to', 'http://127.0.0.1/hook'],
+      {
+        TYXTER_SIMULATE_CHANNEL: 'instagram',
+        TYXTER_SIMULATE_FROM: 'igsid_123',
+        TYXTER_SIMULATE_TO: 'ig_business_1',
+      },
+    );
+    expect(tour).toMatchObject({
+      kind: 'tour',
+      options: {
+        channel: 'instagram',
+        from: 'igsid_123',
+        to: 'ig_business_1',
+      },
+    });
+  });
+
+  it('rejects unknown sandbox inbound channels', () => {
+    expect(() =>
+      parseCli(
+        [
+          'simulate',
+          'inbound',
+          '--api-key',
+          'tx_sandbox_test',
+          '--channel',
+          'telegram',
+          '--from',
+          'u_1',
+          '--to',
+          'account_1',
+        ],
+        {},
+      ),
+    ).toThrow('Invalid --channel');
+  });
+
   it('parses events resend', () => {
     const parsed = parseCli(
       [

@@ -9,6 +9,7 @@ export interface TourOptions {
   readonly apiKey: string;
   readonly forwardTo: string;
   readonly signingSecret: string;
+  readonly channel?: 'whatsapp' | 'instagram';
   readonly from: string;
   readonly to: string;
   readonly body: string;
@@ -47,6 +48,7 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
   const simulated = await simulateInboundMessage({
     apiUrl: options.apiUrl,
     apiKey: options.apiKey,
+    channel: options.channel,
     from: options.from,
     to: options.to,
     body: options.body,

@@ -9,6 +9,7 @@ import {
 export interface SimulateInboundOptions {
   readonly apiUrl: string;
   readonly apiKey: string;
+  readonly channel?: 'whatsapp' | 'instagram';
   readonly from: string;
   readonly to: string;
   readonly body: string;
@@ -23,6 +24,7 @@ export async function simulateInboundMessage(
 ): Promise<MessageResponse> {
   const fetchFn = options.fetchFn ?? fetch;
   const request: InboundSandboxMessageRequest = {
+    ...(options.channel ? { channel: options.channel } : {}),
     from: options.from,
     to: options.to,
     type: 'text',

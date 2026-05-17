@@ -151,6 +151,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
       options: {
         apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
+        channel: channelOption(parsed, env),
         from: requiredString(parsed, env, 'from', 'TYXTER_SIMULATE_FROM'),
         to: requiredString(parsed, env, 'to', 'TYXTER_SIMULATE_TO'),
         body: stringOption(parsed, env, 'body', 'TYXTER_SIMULATE_BODY') ?? 'Hello from Tyxter',
@@ -213,6 +214,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
         signingSecret:
           stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET') ??
           createListenSigningSecret(),
+        channel: channelOption(parsed, env),
         from: requiredString(parsed, env, 'from', 'TYXTER_SIMULATE_FROM'),
         to: requiredString(parsed, env, 'to', 'TYXTER_SIMULATE_TO'),
         body: stringOption(parsed, env, 'body', 'TYXTER_SIMULATE_BODY') ?? 'Hello from Tyxter',
@@ -281,8 +283,8 @@ export function helpText(): string {
     '  tyxter checkpoint --api-key <tx_sandbox_...>',
     '  tyxter events resend <event_id> --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter logs tail --api-key <tx_sandbox_...> --events message.received --json',
-    '  tyxter simulate inbound --api-key <tx_sandbox_...> --from <phone> --to <phone>',
-    '  tyxter tour --api-key <tx_sandbox_...> --forward-to <url> --from <phone> --to <phone>',
+    '  tyxter simulate inbound --api-key <tx_sandbox_...> --from <identity> --to <identity> [--channel whatsapp|instagram]',
+    '  tyxter tour --api-key <tx_sandbox_...> --forward-to <url> --from <identity> --to <identity> [--channel whatsapp|instagram]',
     '  tyxter doctor --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter status',
     '  tyxter status --print-secret',
@@ -293,6 +295,7 @@ export function helpText(): string {
     '  TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:4242/webhooks/tyxter',
     '  TYXTER_WEBHOOK_SECRET=whsec_listen_...',
     '  TYXTER_WEBHOOK_EVENTS=message.received,message.delivered',
+    '  TYXTER_SIMULATE_CHANNEL=whatsapp',
     '  TYXTER_WEBHOOK_WAIT_MS=25000',
     '  TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000',
     '  TYXTER_CLI_STATE_DIR=/data',
@@ -339,6 +342,16 @@ function requiredString(
   const value = stringOption(parsed, env, flag, envKey);
   if (!value) throw new Error(`Missing required --${flag} or ${envKey}.`);
   return value;
+}
+
+function channelOption(
+  parsed: ParsedArgs,
+  env: NodeJS.ProcessEnv,
+): 'whatsapp' | 'instagram' | undefined {
+  const value = stringOption(parsed, env, 'channel', 'TYXTER_SIMULATE_CHANNEL');
+  if (value === undefined) return undefined;
+  if (value === 'whatsapp' || value === 'instagram') return value;
+  throw new Error('Invalid --channel. Expected whatsapp or instagram.');
 }
 
 function stringOption(

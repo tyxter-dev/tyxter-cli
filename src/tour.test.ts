@@ -142,6 +142,7 @@ describe('tour command', () => {
       apiKey: 'tx_sandbox_test',
       forwardTo: 'http://127.0.0.1:4242/webhooks/tyxter',
       signingSecret: 'whsec_tour',
+      channel: 'instagram',
       from: '+15551230000',
       to: '+15557650000',
       body: 'hello tour',
@@ -160,6 +161,7 @@ describe('tour command', () => {
     expect(
       JSON.parse(calls.find((call) => call.url.endsWith('/inbound-messages'))?.body ?? '{}'),
     ).toMatchObject({
+      channel: 'instagram',
       from: '+15551230000',
       to: '+15557650000',
       text: { body: 'hello tour' },

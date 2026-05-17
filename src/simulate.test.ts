@@ -25,6 +25,7 @@ describe('sandbox simulator', () => {
     const result = await simulateInboundMessage({
       apiUrl: 'http://api.test',
       apiKey: 'tx_sandbox_test',
+      channel: 'instagram',
       from: '+15551230000',
       to: '+15557650000',
       body: 'hello',
@@ -39,6 +40,7 @@ describe('sandbox simulator', () => {
     expect(headers.get('tyxter-trace-id')).toBe('trc_123');
     expect(headers.get('idempotency-key')).toBe('idem_123');
     expect(JSON.parse(body)).toEqual({
+      channel: 'instagram',
       from: '+15551230000',
       to: '+15557650000',
       type: 'text',

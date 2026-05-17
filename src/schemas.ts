@@ -67,6 +67,7 @@ export const ListWebhookEventsResponseSchema = z.object({
 export type ListWebhookEventsResponse = z.infer<typeof ListWebhookEventsResponseSchema>;
 
 export const InboundSandboxMessageRequestSchema = z.object({
+  channel: z.enum(['whatsapp', 'instagram']).optional(),
   from: z.string().min(1),
   to: z.string().min(1),
   type: z.literal('text'),

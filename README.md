@@ -77,6 +77,7 @@ tyxter status --print-secret
 tyxter events resend evt_<id> --forward-to http://localhost:3000/webhooks/tyxter
 tyxter logs tail --events message.received --status failed --last 10
 tyxter simulate inbound --from +15551230000 --to +15557650000 --body "hello"
+tyxter simulate inbound --channel instagram --from igsid_123 --to ig_business_1 --body "hello"
 tyxter tour --from +15551230000 --to +15557650000
 ```
 
@@ -85,6 +86,10 @@ API key, and the forward URL accepts a signed diagnostic webhook. `status`
 prints the persisted local signing secret and cursor. `listen --from-now`
 performs the same checkpoint before starting the listener, which avoids
 forwarding historical events in one command.
+
+`simulate inbound` and `tour` default to WhatsApp inbound simulation. Pass
+`--channel instagram` or set `TYXTER_SIMULATE_CHANNEL=instagram` to seed an
+Instagram DM inbound user for local reply-policy testing.
 
 `listen` uses bounded long polling by default (`TYXTER_WEBHOOK_WAIT_MS=25000`),
 backs off idle loops up to `TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000`, adds
