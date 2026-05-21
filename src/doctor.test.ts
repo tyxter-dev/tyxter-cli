@@ -71,6 +71,52 @@ describe('doctor command', () => {
       }),
     ).toBe(true);
   });
+
+  it('keeps a structured report when the local forward URL is down', async () => {
+    const stateDir = await tempDir();
+    const fetchFn: FetchLike = async (input) => {
+      const url = String(input);
+      if (url.startsWith('http://api.test/')) {
+        return Response.json({
+          object: 'webhook_event_listen',
+          data: [],
+          has_more: false,
+          next_cursor: 'cur_doctor',
+        });
+      }
+
+      const cause = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:4242'), {
+        code: 'ECONNREFUSED',
+        syscall: 'connect',
+        address: '127.0.0.1',
+        port: 4242,
+      });
+      const error = new TypeError('fetch failed');
+      error.cause = cause;
+      throw error;
+    };
+
+    const result = await runDoctor({
+      apiUrl: 'http://api.test',
+      apiKey: 'tx_sandbox_test',
+      forwardTo: 'http://127.0.0.1:4242/webhooks/tyxter',
+      signingSecret: 'whsec_listen_doctor',
+      stateDir,
+      fetchFn,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.checks.map((check) => [check.name, check.ok])).toEqual([
+      ['state', true],
+      ['api', true],
+      ['forward', false],
+    ]);
+    expect(result.checks[2]?.message).toContain(
+      'http://127.0.0.1:4242/webhooks/tyxter failed: fetch failed',
+    );
+    expect(result.checks[2]?.message).toContain('ECONNREFUSED');
+    expect(result.checks[2]?.message).toContain('127.0.0.1:4242');
+  });
 });
 
 async function tempDir(): Promise<string> {

@@ -28,6 +28,13 @@ export interface DoctorResult {
   readonly checks: readonly DoctorCheck[];
 }
 
+interface FetchErrorCause extends Error {
+  readonly address?: string;
+  readonly code?: string;
+  readonly port?: number | string;
+  readonly syscall?: string;
+}
+
 export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
   const checks: DoctorCheck[] = [];
   let signingSecret: string | null = null;
@@ -112,20 +119,29 @@ async function probeForwardUrl(
   };
   const rawBody = JSON.stringify(payload);
   const timestamp = String(Math.floor(now.getTime() / 1000));
-  const response = await fetchFn(options.forwardTo, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      [FORWARDED_WEBHOOK_HEADERS.ID]: payload.id,
-      [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
-      [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signWebhook(
-        options.signingSecret,
-        timestamp,
-        rawBody,
-      ),
-    },
-    body: rawBody,
-  });
+  let response: Response;
+  try {
+    response = await fetchFn(options.forwardTo, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        [FORWARDED_WEBHOOK_HEADERS.ID]: payload.id,
+        [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
+        [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signWebhook(
+          options.signingSecret,
+          timestamp,
+          rawBody,
+        ),
+      },
+      body: rawBody,
+    });
+  } catch (error) {
+    return {
+      name: 'forward',
+      ok: false,
+      message: `${options.forwardTo} failed: ${errorMessage(error)}`,
+    };
+  }
 
   if (response.ok) {
     return {
@@ -143,5 +159,21 @@ async function probeForwardUrl(
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) return String(error);
+  const cause = error.cause;
+  const causeMessage = causeDiagnostic(cause);
+  return causeMessage ? `${error.message}: ${causeMessage}` : error.message;
+}
+
+function causeDiagnostic(cause: unknown): string | undefined {
+  if (!(cause instanceof Error)) return cause === undefined ? undefined : String(cause);
+  const detail = cause as FetchErrorCause;
+  const address = detail.address ? String(detail.address) : undefined;
+  const port = detail.port === undefined ? undefined : String(detail.port);
+  const endpoint = address && port ? `${address}:${port}` : address ?? port;
+  const parts = [detail.code, detail.syscall, endpoint].filter(
+    (part): part is string => typeof part === 'string' && part.length > 0,
+  );
+  if (parts.length > 0) return parts.join(' ');
+  return cause.message;
 }
