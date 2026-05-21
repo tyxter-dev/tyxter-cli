@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseCli } from './args.js';
+import { helpText, parseCli } from './args.js';
 
 describe('CLI argument parsing', () => {
   it('parses top-level help flags', () => {
     expect(parseCli(['--help'], {})).toEqual({ kind: 'help' });
     expect(parseCli(['-h'], {})).toEqual({ kind: 'help' });
+  });
+
+  it('shows the public API URL in help examples', () => {
+    expect(helpText()).toContain('TYXTER_API_URL=https://api.tyxter.dev');
   });
 
   it('parses listen with persistent state defaults', () => {
@@ -17,7 +21,7 @@ describe('CLI argument parsing', () => {
     expect(parsed).toMatchObject({
       kind: 'listen',
       options: {
-        apiUrl: 'http://localhost:3001',
+        apiUrl: 'https://api.tyxter.dev',
         apiKey: 'tx_sandbox_test',
         forwardTo: 'http://127.0.0.1:4242/hook',
         stateDir: '.tyxter-cli',
@@ -124,7 +128,7 @@ describe('CLI argument parsing', () => {
     expect(parsed).toEqual({
       kind: 'checkpoint',
       options: {
-        apiUrl: 'http://localhost:3001',
+        apiUrl: 'https://api.tyxter.dev',
         apiKey: 'tx_sandbox_test',
         signingSecret: undefined,
         cursor: undefined,

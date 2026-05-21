@@ -8,6 +8,8 @@ import { DEFAULT_STATE_DIR } from './state.js';
 import type { StatusOptions } from './status.js';
 import type { TourOptions } from './tour.js';
 
+export const DEFAULT_API_URL = 'https://api.tyxter.dev';
+
 export type CliCommand =
   | { kind: 'help' }
   | { kind: 'listen'; options: CliListenOptions }
@@ -95,7 +97,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'listen',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         forwardTo: requiredString(parsed, env, 'forward-to', 'TYXTER_WEBHOOK_FORWARD_URL'),
         signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
@@ -133,7 +135,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'checkpoint',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
         cursor: stringOption(parsed, env, 'cursor', 'TYXTER_WEBHOOK_CURSOR'),
@@ -149,7 +151,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'simulate-inbound',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         channel: channelOption(parsed, env),
         from: requiredString(parsed, env, 'from', 'TYXTER_SIMULATE_FROM'),
@@ -168,7 +170,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'events-resend',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         eventId,
         forwardTo: requiredString(parsed, env, 'forward-to', 'TYXTER_WEBHOOK_FORWARD_URL'),
@@ -184,7 +186,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'logs-tail',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         ...eventFilter,
         status: statusOption(parsed),
@@ -208,7 +210,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'tour',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         forwardTo: requiredString(parsed, env, 'forward-to', 'TYXTER_WEBHOOK_FORWARD_URL'),
         signingSecret:
@@ -238,7 +240,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     return {
       kind: 'doctor',
       options: {
-        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? 'http://localhost:3001',
+        apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         forwardTo: requiredString(parsed, env, 'forward-to', 'TYXTER_WEBHOOK_FORWARD_URL'),
         signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
@@ -290,7 +292,7 @@ export function helpText(): string {
     '  tyxter status --print-secret',
     '',
     'Environment:',
-    '  TYXTER_API_URL=http://localhost:3001',
+    '  TYXTER_API_URL=https://api.tyxter.dev',
     '  TYXTER_API_KEY=tx_sandbox_...',
     '  TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:4242/webhooks/tyxter',
     '  TYXTER_WEBHOOK_SECRET=whsec_listen_...',

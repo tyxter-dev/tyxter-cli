@@ -20,7 +20,7 @@ describe('tour command', () => {
     expect(parsed).toMatchObject({
       kind: 'tour',
       options: {
-        apiUrl: 'http://localhost:3001',
+        apiUrl: 'https://api.tyxter.dev',
         apiKey: 'tx_sandbox_test',
         forwardTo: 'http://127.0.0.1:4242/hook',
         signingSecret: 'whsec_tour',
