@@ -31,6 +31,15 @@ const server = createServer((req, res) => {
     const signature = String(req.headers['tyxter-webhook-signature'] ?? '');
     const webhookId = String(req.headers['tyxter-webhook-id'] ?? '');
     const verified = verifySignature(secret, timestamp, rawBody, signature);
+    let parsedBody;
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      console.error('Tour demo receiver rejected a request with a non-JSON body.');
+      res.writeHead(400, { 'content-type': 'application/json' });
+      res.end('{"ok":false}');
+      return;
+    }
     received = true;
 
     console.log(
@@ -39,7 +48,7 @@ const server = createServer((req, res) => {
           object: 'tour_receiver_webhook',
           webhook_id: webhookId,
           signature_verified: verified,
-          body: JSON.parse(rawBody),
+          body: parsedBody,
         },
         null,
         2,
