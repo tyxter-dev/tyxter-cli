@@ -174,6 +174,76 @@ For an n8n-style local service, the forward URL can use the Compose service
 host, for example
 `http://mock-n8n:5678/webhook/tyxter-ai-reply`.
 
+## Test Real Delivery With A Quick Tunnel
+
+`listen` reads events from the listen stream, so it never exercises Tyxter's
+real delivery path. To see real deliveries (signed with the endpoint's own
+secret, retried on failure, recorded as delivery attempts), put your local app
+behind a Cloudflare Quick Tunnel and register a temporary sandbox webhook
+endpoint for it. Quick Tunnels need no Cloudflare account.
+
+1. Start your app, then the tunnel:
+
+   ```bash
+   cloudflared tunnel --url http://localhost:3000 --output json
+   ```
+
+   With `--output json`, the public URL appears inside a log `message`, not as
+   its own field. Extract it with the pattern
+   `https://[a-z0-9-]+\.trycloudflare\.com`. The tunnel is ready when a
+   `Registered tunnel connection` line appears.
+
+2. Register the endpoint with your sandbox key. Webhook endpoint URLs must be
+   HTTPS, which the tunnel provides:
+
+   ```bash
+   curl -sS https://api.tyxter.com/v1/webhook-endpoints \
+     -H "Authorization: Bearer $TYXTER_API_KEY" \
+     -H "Content-Type: application/json" \
+     -H "Idempotency-Key: tunnel-$(date +%s)" \
+     -d '{"url":"https://<words>.trycloudflare.com/webhooks/tyxter","subscribed_events":["message.received"],"description":"tyxter-cli quick tunnel"}'
+   ```
+
+   The response returns `signing_secret` once. Configure your app's verifier
+   with it for this run: real deliveries are signed with the endpoint's secret,
+   not the CLI's local secret.
+
+3. Stop `tyxter listen` while you test delivery. Otherwise your app receives
+   each event twice: once forwarded by the listener, once delivered.
+
+4. Fire an event and watch the delivery:
+
+   ```bash
+   tyxter simulate inbound --from +5511988887777 --to +15557650000 --body "hello"
+   tyxter logs tail --events message.received
+   ```
+
+   To exercise retries, make your route return a 5xx once. The next attempt
+   follows 30 seconds later.
+
+5. Delete the endpoint before you stop the tunnel:
+
+   ```bash
+   curl -sS -X DELETE https://api.tyxter.com/v1/webhook-endpoints/<id> \
+     -H "Authorization: Bearer $TYXTER_API_KEY"
+   ```
+
+   The URL stops working when `cloudflared` exits, and the next run gets a new
+   hostname. A forgotten endpoint keeps retrying the dead URL. After 20
+   consecutive failed deliveries, Tyxter disables it and notifies your account.
+
+Limits:
+
+- Sandbox keys only. Do not route production payloads (real phone numbers and
+  messages) through a Quick Tunnel.
+- Quick Tunnels are meant for testing: no uptime guarantee, and at most 200
+  requests in flight.
+- The URL is public. Verify `tyxter-webhook-signature` before trusting a
+  request. Email-protected tunnels (`--allowed-mail`) need a browser sign-in,
+  so Tyxter cannot deliver to them.
+- Some corporate networks block `trycloudflare.com`. The listener needs only
+  outbound HTTPS to the Tyxter API, so it keeps working there.
+
 ## Agent-Driven App Tests
 
 This repo includes a Codex skill at `.agents/skills/test-sandbox-webhooks`.

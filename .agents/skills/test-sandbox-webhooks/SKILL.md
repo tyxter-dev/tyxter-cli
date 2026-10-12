@@ -15,6 +15,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 - Never commit API keys, webhook secrets, dashboard cookies, or received payloads.
 - Prefer env files named like `.env.tyxter-cli`; add only `.example` files to git.
 - Treat `TYXTER_WEBHOOK_SECRET` as a local test secret shared by the listener and the app verifier.
+- Never point a Quick Tunnel endpoint at production data: create it with a sandbox key only.
 
 ## Workflow
 
@@ -36,6 +37,19 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
      ```
 
      Then copy `.env.tyxter-cli.example` to `.env.tyxter-cli` and set the sandbox key.
+   - Real delivery, only when the user wants Tyxter's delivery path tested (the
+     endpoint's own signing secret, retries, delivery attempts) rather than
+     only their handler: follow the CLI README section "Test Real Delivery With
+     A Quick Tunnel".
+     - Run `cloudflared tunnel --url http://localhost:<port> --output json` and
+       take the URL matching `https://[a-z0-9-]+\.trycloudflare\.com` from the
+       log `message`. Wait for a `Registered tunnel connection` line.
+     - Create the endpoint with `POST /v1/webhook-endpoints` and an
+       `Idempotency-Key`. Give the app the returned `signing_secret`.
+     - Stop the listener for this run so each event arrives once.
+     - Delete the endpoint with `DELETE /v1/webhook-endpoints/<id>` before you
+       finish, including after a failure: a leftover endpoint retries a dead
+       URL until Tyxter disables it and notifies the account.
 
 3. Start the app with a known local signing secret.
    - Prefer `TYXTER_WEBHOOK_SECRET=whsec_local_tyxtest` for repeatable tests.
@@ -96,3 +110,4 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 - `doctor` passes, or any diagnostic-only failure is explained and a real event succeeds.
 - A sandbox event is created and forwarded to the app.
 - The final report includes exact commands run, event identifiers, verification evidence, and any files changed.
+- If you created a Quick Tunnel endpoint, it is deleted, and the report gives its id.
