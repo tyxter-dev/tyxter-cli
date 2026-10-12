@@ -45,8 +45,13 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
        take the URL matching `https://[a-z0-9-]+\.trycloudflare\.com` from the
        log `message`. Wait for a `Registered tunnel connection` line.
      - Create the endpoint with `POST /v1/webhook-endpoints` and an
-       `Idempotency-Key`. Give the app the returned `signing_secret`.
-     - Stop the listener for this run so each event arrives once.
+       `Idempotency-Key`. Give the app the returned `signing_secret` (64 hex
+       characters, used as-is) and restart or reload it before firing an event.
+     - Stop the listener for this run so each event arrives once, and skip
+       steps 3 to 5: the local secret, the listener, `status` and `doctor` belong
+       to listener mode. Fire the event with step 6's `simulate inbound`, then
+       read the delivery with `logs tail --events message.received --last 5`
+       under a timeout, since it follows until stopped.
      - Delete the endpoint with `DELETE /v1/webhook-endpoints/<id>` before you
        finish, including after a failure: a leftover endpoint retries a dead
        URL until Tyxter disables it and notifies the account.
@@ -110,4 +115,6 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 - `doctor` passes, or any diagnostic-only failure is explained and a real event succeeds.
 - A sandbox event is created and forwarded to the app.
 - The final report includes exact commands run, event identifiers, verification evidence, and any files changed.
-- If you created a Quick Tunnel endpoint, it is deleted, and the report gives its id.
+- In real-delivery mode the `status` and `doctor` criteria do not apply. Instead, the app
+  verified a delivery signed with the endpoint's `signing_secret`, and the endpoint is
+  deleted; the report gives its id.

@@ -204,9 +204,10 @@ endpoint for it. Quick Tunnels need no Cloudflare account.
      -d '{"url":"https://<words>.trycloudflare.com/webhooks/tyxter","subscribed_events":["message.received"],"description":"tyxter-cli quick tunnel"}'
    ```
 
-   The response returns `signing_secret` once. Configure your app's verifier
-   with it for this run: real deliveries are signed with the endpoint's secret,
-   not the CLI's local secret.
+   The response returns `signing_secret` once: a 64-character hex string, used
+   as-is. Give it to your app's verifier (restart the app or reload its
+   config) before you fire an event: real deliveries are signed with the
+   endpoint's secret, not the CLI's local secret.
 
 3. Stop `tyxter listen` while you test delivery. Otherwise your app receives
    each event twice: once forwarded by the listener, once delivered.
@@ -217,6 +218,8 @@ endpoint for it. Quick Tunnels need no Cloudflare account.
    tyxter simulate inbound --from +5511988887777 --to +15557650000 --body "hello"
    tyxter logs tail --events message.received
    ```
+
+   `logs tail` keeps following until you stop it with Ctrl-C.
 
    To exercise retries, make your route return a 5xx once. The next attempt
    follows 30 seconds later.
