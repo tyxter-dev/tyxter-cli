@@ -94,9 +94,9 @@ tyxter status
 tyxter status --print-secret
 tyxter events resend evt_<id> --forward-to http://localhost:3000/webhooks/tyxter
 tyxter logs tail --events message.received --status failed --last 10
-tyxter simulate inbound --from +15551230000 --to +15557650000 --body "hello"
+tyxter simulate inbound --from +5511988887777 --to +15557650000 --body "hello"
 tyxter simulate inbound --channel instagram --from igsid_123 --to ig_business_1 --body "hello"
-tyxter tour --from +15551230000 --to +15557650000
+tyxter tour --from +5511988887777 --to +15557650000
 ```
 
 `doctor` checks that state is writable, the sandbox listen endpoint accepts the

@@ -83,7 +83,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
 
    ```bash
    docker compose run --rm tyxter-cli simulate inbound \
-     --from +15551230000 \
+     --from +5511988887777 \
      --to +15557650000 \
      --body "Tyxter sandbox webhook smoke"
    ```

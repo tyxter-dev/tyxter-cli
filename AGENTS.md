@@ -79,14 +79,14 @@ this listener replaces.
 5. Fire a real sandbox event when an end-to-end check is needed:
    ```bash
    docker compose run --rm tyxter-cli simulate inbound \
-     --from +15551230000 \
+     --from +5511988887777 \
      --to +15557650000 \
      --body "hello from Tyxter"
    ```
    Prefer `tour` when you also want to checkpoint pre-existing events:
    ```bash
    docker compose run --rm tyxter-cli tour \
-     --from +15551230000 --to +15557650000
+     --from +5511988887777 --to +15557650000
    ```
 6. Report back with:
    - whether the container is running
