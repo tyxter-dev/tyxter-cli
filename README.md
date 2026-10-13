@@ -149,7 +149,8 @@ delivery to registered webhook endpoints.
 
 `logs tail` follows registered webhook delivery events from
 `GET /v1/webhook-events`. By default it starts from now; add `--last N` to print
-recent historical events before tailing.
+recent historical events before tailing. It follows additional pages when more
+than 100 new events arrive between polls.
 
 If your local app verifies webhook signatures, configure it with the same local
 secret used by the CLI. Either set `TYXTER_WEBHOOK_SECRET` yourself and pass the
