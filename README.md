@@ -115,6 +115,10 @@ small jitter, and honors server `429 Retry-After` responses. The Tyxter API
 still enforces abuse protection server-side; CLI timing settings are for local
 developer ergonomics, not security.
 
+Forwarding to the local webhook has a 30-second response deadline and stops
+when the listener is interrupted. The cursor is saved only after a complete
+batch, so an interrupted event may be replayed when the listener restarts.
+
 `listen prod` requires a `tx_live_...` key and is intentionally finite. By
 default it opens a five-minute listen session
 (`TYXTER_WEBHOOK_LISTEN_TTL_SECONDS=300`), passes `listen_session_id` to

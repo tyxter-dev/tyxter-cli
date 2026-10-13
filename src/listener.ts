@@ -10,6 +10,8 @@ export const FORWARDED_WEBHOOK_HEADERS = {
   SIGNATURE: 'tyxter-webhook-signature',
 } as const;
 
+const DEFAULT_FORWARD_TIMEOUT_MS = 30_000;
+
 export interface ListenerOptions {
   readonly apiUrl: string;
   readonly apiKey: string;
@@ -111,6 +113,7 @@ export async function pollOnce(options: ForwardingListenerOptions): Promise<Poll
       forwardTo: options.forwardTo,
       signingSecret: options.signingSecret,
       fetchFn,
+      signal: options.signal,
       now: options.now,
     });
     eventIds.push(event.id);
@@ -188,22 +191,42 @@ export async function forwardEvent(input: {
   forwardTo: string;
   signingSecret: string;
   fetchFn: FetchLike;
+  signal?: AbortSignal;
+  timeoutMs?: number;
   now?: () => number;
 }): Promise<void> {
   const rawBody = JSON.stringify(input.payload);
   const timestamp = String(Math.floor((input.now?.() ?? Date.now()) / 1000));
   const signature = signWebhook(input.signingSecret, timestamp, rawBody);
-  const response = await input.fetchFn(input.forwardTo, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      [FORWARDED_WEBHOOK_HEADERS.ID]: input.eventId,
-      [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
-      [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signature,
-    },
-    body: rawBody,
-  });
-  if (!response.ok) await readFailure(response, 'local webhook forward');
+  // A per-forward controller instead of AbortSignal.any(): on Node 22, any() retains every
+  // combined signal on the long-lived listener signal for the life of the process.
+  const timeoutMs = input.timeoutMs ?? DEFAULT_FORWARD_TIMEOUT_MS;
+  const controller = new AbortController();
+  const abortForward = () => controller.abort(input.signal?.reason);
+  const timeout = setTimeout(() => {
+    controller.abort(
+      new DOMException(`local webhook forward timed out after ${timeoutMs}ms`, 'TimeoutError'),
+    );
+  }, timeoutMs);
+  if (input.signal?.aborted) abortForward();
+  else input.signal?.addEventListener('abort', abortForward, { once: true });
+  try {
+    const response = await input.fetchFn(input.forwardTo, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'content-type': 'application/json',
+        [FORWARDED_WEBHOOK_HEADERS.ID]: input.eventId,
+        [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
+        [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signature,
+      },
+      body: rawBody,
+    });
+    if (!response.ok) await readFailure(response, 'local webhook forward');
+  } finally {
+    clearTimeout(timeout);
+    input.signal?.removeEventListener('abort', abortForward);
+  }
 }
 
 function isAbortError(error: unknown): boolean {
