@@ -40,7 +40,7 @@ available through Tyxter support.
 
 Requirements:
 
-- Node.js 20.11 or newer.
+- Node.js 22.12 or newer.
 - pnpm 10 or newer.
 - Docker Desktop or a compatible Docker engine.
 
