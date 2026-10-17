@@ -26,6 +26,11 @@ responses. `TYXTER_WEBHOOK_POLL_INTERVAL_MS` is the base interval, not a fixed
 tight loop. `TYXTER_WEBHOOK_EVENTS` accepts comma-separated event filters. The
 API still owns abuse protection server-side.
 
+Checkpointing retries rate-limited pages and honors `Retry-After`, including
+when invoked by `listen --from-now` and `tour`. Listener jitter preserves the
+server's `next_poll_after_ms` lower bound. Each `doctor` network check has a
+five-second deadline; its API probe sends `wait_ms=0`.
+
 ## Repo Map
 
 - `src/main.ts` — CLI entrypoint and command dispatcher.

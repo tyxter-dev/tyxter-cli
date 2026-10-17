@@ -2,7 +2,7 @@ name: tyxter-cli
 
 services:
   tyxter-cli:
-    image: ${TYXTER_CLI_IMAGE:-ghcr.io/tyxter-dev/tyxter-cli:latest}
+    image: ${TYXTER_CLI_IMAGE:-ghcr.io/tyxter/tyxter-cli:latest}
     container_name: tyxter-cli
     restart: unless-stopped
     environment:

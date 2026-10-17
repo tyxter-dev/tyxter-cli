@@ -16,7 +16,7 @@ def main() -> int:
     parser.add_argument("--webhook-path", default="/webhooks/tyxter")
     parser.add_argument(
         "--image",
-        default="ghcr.io/tyxter-dev/tyxter-cli:latest",
+        default="ghcr.io/tyxter/tyxter-cli:latest",
     )
     parser.add_argument("--force", action="store_true")
     args = parser.parse_args()

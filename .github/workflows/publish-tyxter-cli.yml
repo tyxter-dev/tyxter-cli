@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_NAME: ghcr.io/tyxter-dev/tyxter-cli
+  IMAGE_NAME: ghcr.io/tyxter/tyxter-cli
 
 jobs:
   validate:

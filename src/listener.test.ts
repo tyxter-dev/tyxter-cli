@@ -223,6 +223,23 @@ describe('webhook listener', () => {
     expect(sleepMs).toEqual([3000, 2000, 1000]);
   });
 
+  it.each([false, true])('preserves the server polling delay with negative jitter (delivered=%s)', async (delivered) => {
+    const controller = new AbortController();
+    const sleeps: number[] = [];
+    await runListener({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', forwardTo: 'http://local.test',
+      signingSecret: 'whsec_test', pollIntervalMs: 1000, maxPollIntervalMs: 30_000,
+      once: false, signal: controller.signal, random: () => 0,
+      fetchFn: async (input) => String(input).startsWith('http://api.test')
+        ? Response.json(listenResponse(delivered ? [{ id: 'out_test', payload: {} }] : [], {
+          cursor: null, nextPollAfterMs: 10_000,
+        }))
+        : new Response(null, { status: 204 }),
+      sleep: async (ms) => { sleeps.push(ms); controller.abort(); },
+    });
+    expect(sleeps).toEqual([10_000]);
+  });
+
   it('honors Retry-After on listen rate limits and keeps listening', async () => {
     const controller = new AbortController();
     const sleepMs: number[] = [];

@@ -1,4 +1,4 @@
-import { endpointUrl, type FetchLike } from './http.js';
+import { endpointUrl, type FetchLike, withRequestTimeout } from './http.js';
 import { FORWARDED_WEBHOOK_HEADERS, readListenPage } from './listener.js';
 import { signWebhook } from './signature.js';
 import { resolveListenerState } from './state.js';
@@ -10,6 +10,7 @@ export interface DoctorOptions {
   readonly signingSecret?: string;
   readonly stateDir: string;
   readonly fetchFn?: FetchLike;
+  readonly requestTimeoutMs?: number;
   readonly now?: () => Date;
 }
 
@@ -62,13 +63,17 @@ export async function runDoctor(options: DoctorOptions): Promise<DoctorResult> {
   }
 
   try {
-    await readListenPage({
-      apiUrl: options.apiUrl,
-      apiKey: options.apiKey,
-      limit: 1,
-      cursor: cursor ?? undefined,
-      fetchFn: options.fetchFn,
-    });
+    await withRequestTimeout(undefined, options.requestTimeoutMs ?? 5_000, (signal) =>
+      readListenPage({
+        apiUrl: options.apiUrl,
+        apiKey: options.apiKey,
+        limit: 1,
+        cursor: cursor ?? undefined,
+        fetchFn: options.fetchFn,
+        waitMs: 0,
+        signal,
+      }),
+    );
     checks.push({
       name: 'api',
       ok: true,
@@ -121,19 +126,24 @@ async function probeForwardUrl(
   const timestamp = String(Math.floor(now.getTime() / 1000));
   let response: Response;
   try {
-    response = await fetchFn(options.forwardTo, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        [FORWARDED_WEBHOOK_HEADERS.ID]: payload.id,
-        [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
-        [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signWebhook(
-          options.signingSecret,
-          timestamp,
-          rawBody,
-        ),
-      },
-      body: rawBody,
+    response = await withRequestTimeout(undefined, options.requestTimeoutMs ?? 5_000, async (signal) => {
+      const response = await fetchFn(options.forwardTo, {
+        signal,
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          [FORWARDED_WEBHOOK_HEADERS.ID]: payload.id,
+          [FORWARDED_WEBHOOK_HEADERS.TIMESTAMP]: timestamp,
+          [FORWARDED_WEBHOOK_HEADERS.SIGNATURE]: signWebhook(
+            options.signingSecret,
+            timestamp,
+            rawBody,
+          ),
+        },
+        body: rawBody,
+      });
+      await response.body?.cancel();
+      return response;
     });
   } catch (error) {
     return {

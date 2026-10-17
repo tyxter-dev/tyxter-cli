@@ -179,7 +179,10 @@ export async function runListener(options: RunListenerOptions): Promise<PollResu
         result.delivered > 0
           ? Math.max(options.pollIntervalMs, result.nextPollAfterMs ?? 0)
           : Math.max(idleDelayMs, result.nextPollAfterMs ?? 0);
-      await sleepWithOptions(options, withJitter(activeDelayMs, options));
+      await sleepWithOptions(options, Math.max(
+        result.nextPollAfterMs ?? 0,
+        withJitter(activeDelayMs, options),
+      ));
       idleDelayMs =
         result.delivered > 0
           ? options.pollIntervalMs

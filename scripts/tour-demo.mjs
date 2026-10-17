@@ -13,7 +13,7 @@ if (!apiKey) {
   process.exit(1);
 }
 
-const apiUrl = process.env.TYXTER_API_URL ?? 'http://localhost:3001';
+const apiUrl = process.env.TYXTER_API_URL ?? 'https://api.tyxter.com';
 const port = readPort(process.env.TYXTER_TOUR_PORT, 4242);
 const secret = process.env.TYXTER_WEBHOOK_SECRET ?? 'whsec_tour_demo';
 const from = process.env.TYXTER_SIMULATE_FROM ?? '+5511988887777';

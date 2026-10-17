@@ -8,7 +8,7 @@ export async function withRequestTimeout<T>(
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   const timer = setTimeout(() => {
-    controller.abort(new DOMException('API request timed out', 'TimeoutError'));
+    controller.abort(new DOMException('Request timed out', 'TimeoutError'));
   }, timeoutMs);
   if (signal?.aborted) abort();
   else signal?.addEventListener('abort', abort, { once: true });

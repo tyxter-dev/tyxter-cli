@@ -37,6 +37,9 @@ listener start when you are testing with an existing sandbox and do not want old
 events replayed. Skip it when you intentionally want to replay pending sandbox
 events.
 
+Checkpointing honors `429 Retry-After` responses and retries the current page,
+including when invoked by `listen --from-now` or `tour`.
+
 ## Use The Published Image
 
 Run the image directly:
@@ -47,7 +50,7 @@ docker run --rm \
   -e TYXTER_API_KEY=tx_sandbox_... \
   -e TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:3000/webhooks/tyxter \
   -v tyxter-cli-data:/data \
-  ghcr.io/tyxter-dev/tyxter-cli:latest listen
+  ghcr.io/tyxter/tyxter-cli:latest listen
 ```
 
 Or use the image-only Compose file:
@@ -77,7 +80,7 @@ docker run --rm \
   -e TYXTER_API_KEY=tx_live_... \
   -e TYXTER_WEBHOOK_FORWARD_URL=http://host.docker.internal:3000/webhooks/tyxter \
   -e TYXTER_WEBHOOK_LISTEN_TTL_SECONDS=300 \
-  ghcr.io/tyxter-dev/tyxter-cli:latest listen prod
+  ghcr.io/tyxter/tyxter-cli:latest listen prod
 ```
 
 ## Commands
@@ -106,6 +109,9 @@ prints the persisted local signing secret and cursor. `listen --from-now`
 performs the same checkpoint before starting the listener, which avoids
 forwarding historical events in one command.
 
+Each `doctor` network check has a five-second deadline. Its API probe disables
+long polling, and timeouts appear as failed checks in the diagnostic report.
+
 `simulate inbound` and `tour` default to WhatsApp inbound simulation. Pass
 `--channel instagram` or set `TYXTER_SIMULATE_CHANNEL=instagram` to seed an
 Instagram DM inbound user for local reply-policy testing.
@@ -124,6 +130,8 @@ backs off idle loops up to `TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000`, adds
 small jitter, and honors server `429 Retry-After` responses. The Tyxter API
 still enforces abuse protection server-side; CLI timing settings are for local
 developer ergonomics, not security.
+
+Jitter never shortens the server's `next_poll_after_ms` delay.
 
 Forwarding to the local webhook has a 30-second response deadline and stops
 when the listener is interrupted. The cursor is saved only after a complete

@@ -25,7 +25,7 @@ register a normal dashboard webhook endpoint for this local sandbox flow.
    - If any of these cannot be inferred safely, ask one concise question.
 
 2. Choose the listener mode.
-   - Pull image: use `ghcr.io/tyxter-dev/tyxter-cli:latest`.
+   - Pull image: use `ghcr.io/tyxter/tyxter-cli:latest`.
    - Build source: use `compose.yaml` from the Tyxter CLI repo.
    - If the customer app repo has no compose file and the user wants reusable setup, run the
      bundled script from this skill's `scripts/` directory:
