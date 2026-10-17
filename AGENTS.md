@@ -30,6 +30,7 @@ API still owns abuse protection server-side.
 
 - `src/main.ts` — CLI entrypoint and command dispatcher.
 - `src/args.ts` — `parseCli` and help text. Adjust here when adding flags.
+- `src/http.ts` — HTTP failures and bounded request/cancellation helpers.
 - `src/checkpoint.ts` — advances the listen cursor without forwarding events.
 - `src/events.ts` — local replay for one sandbox listen event.
 - `src/listen-session.ts` — create/disable finite production listen sessions.
@@ -43,6 +44,9 @@ API still owns abuse protection server-side.
 - `src/schemas.ts` — Zod schemas for API payloads.
 - `src/*.test.ts` — Vitest suites colocated with sources.
 - `scripts/tour-demo.mjs` — local tour receiver demo used by `pnpm tour:demo`.
+- `scripts/release-metadata.mjs` — validates tag/version agreement and stable channel eligibility.
+- `scripts/check-package.mjs` — verifies npm package contents before release.
+- `tsconfig.build.json`, `vitest.config.ts` — exclude tests from the production build and compiled output from test discovery.
 - `compose.yaml`, `compose.image.yaml`, `Dockerfile` — container plumbing.
 - `.agents/skills/test-sandbox-webhooks/` — bundled Codex/Claude skill for
   driving the CLI against a customer app.
@@ -135,11 +139,20 @@ Before declaring work done:
 pnpm typecheck
 pnpm test
 pnpm build
+pnpm check:package
+pnpm audit
 ```
 Rebuild the container (`docker compose build`) if you changed anything under
 `src/`, `package.json`, `pnpm-lock.yaml`, or the `Dockerfile`.
 
 ## Safety Rules
+
+- `tour` resolves its signing secret through `src/state.ts`; its cursor stays ephemeral.
+- State updates use a cross-process lock and private directory/file permissions.
+- Unknown commands, unsupported flags, and missing flag values must fail rather than fall back silently.
+- `--version`/`-V` prints the package version without requiring credentials.
+- Publishing depends on validation for Node 22.12/24 and linux/amd64/linux/arm64.
+  Only matching stable version tags update `latest`; main builds use `edge`.
 
 - Refuse live keys for normal sandbox commands (`listen`, `checkpoint`,
   `doctor`, `tour`, `simulate inbound`, `events resend`). The only live-key

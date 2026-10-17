@@ -1,4 +1,4 @@
-import { endpointUrl, type FetchLike, readFailure } from './http.js';
+import { endpointUrl, type FetchLike, readFailure, withRequestTimeout } from './http.js';
 import {
   WebhookListenSessionResponseSchema,
   type WebhookListenSessionResponse,
@@ -27,36 +27,44 @@ export async function createWebhookListenSession(
   if (options.ttlSeconds !== undefined) body.ttl_seconds = options.ttlSeconds;
   if (options.reason) body.reason = options.reason;
 
-  const response = await fetchFn(endpointUrl(options.apiUrl, '/v1/webhook-events/listen-sessions'), {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${options.apiKey}`,
-      accept: 'application/json',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(body),
+  // Keep creation alive briefly after an interrupt so the caller can recover the
+  // session id and disable it. Never use the listener's aborted signal here.
+  return withRequestTimeout(undefined, 5_000, async (signal) => {
+    const response = await fetchFn(endpointUrl(options.apiUrl, '/v1/webhook-events/listen-sessions'), {
+      signal,
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${options.apiKey}`,
+        accept: 'application/json',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) await readFailure(response, 'webhook listen session create');
+    return WebhookListenSessionResponseSchema.parse(await response.json());
   });
-  if (!response.ok) await readFailure(response, 'webhook listen session create');
-  return WebhookListenSessionResponseSchema.parse(await response.json());
 }
 
 export async function disableWebhookListenSession(
   options: DisableWebhookListenSessionOptions,
 ): Promise<WebhookListenSessionResponse> {
   const fetchFn = options.fetchFn ?? fetch;
-  const response = await fetchFn(
-    endpointUrl(
-      options.apiUrl,
-      `/v1/webhook-events/listen-sessions/${encodeURIComponent(options.listenSessionId)}`,
-    ),
-    {
-      method: 'DELETE',
-      headers: {
-        authorization: `Bearer ${options.apiKey}`,
-        accept: 'application/json',
+  return withRequestTimeout(undefined, 3_000, async (signal) => {
+    const response = await fetchFn(
+      endpointUrl(
+        options.apiUrl,
+        `/v1/webhook-events/listen-sessions/${encodeURIComponent(options.listenSessionId)}`,
+      ),
+      {
+        signal,
+        method: 'DELETE',
+        headers: {
+          authorization: `Bearer ${options.apiKey}`,
+          accept: 'application/json',
+        },
       },
-    },
-  );
-  if (!response.ok) await readFailure(response, 'webhook listen session disable');
-  return WebhookListenSessionResponseSchema.parse(await response.json());
+    );
+    if (!response.ok) await readFailure(response, 'webhook listen session disable');
+    return WebhookListenSessionResponseSchema.parse(await response.json());
+  });
 }

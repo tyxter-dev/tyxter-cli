@@ -3,60 +3,57 @@ name: Publish Tyxter CLI image
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-    tags:
-      - "v*"
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - "Dockerfile"
-      - "pnpm-lock.yaml"
-      - "package.json"
-      - "tsconfig.json"
-      - ".github/workflows/publish-tyxter-cli.yml"
+    branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
   IMAGE_NAME: ghcr.io/tyxter-dev/tyxter-cli
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
+
   publish:
+    needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
+      - uses: actions/checkout@v5
+      - name: Validate release tag and package version
+        id: release
+        run: node scripts/release-metadata.mjs
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=sha-
-            type=raw,value=alpha,enable=${{ startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-alpha.') }}
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ steps.release.outputs.stable == 'true' }}
+      - uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

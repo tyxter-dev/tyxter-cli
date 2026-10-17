@@ -42,6 +42,7 @@ Requirements:
 
 - Node.js 22.12 or newer.
 - pnpm 10 or newer.
+- Use the package-manager version pinned in `package.json` through Corepack.
 - Docker Desktop or a compatible Docker engine.
 
 Set up the repo:
@@ -86,6 +87,9 @@ Before opening a pull request:
    ```bash
    pnpm test
    pnpm build
+   pnpm typecheck
+   pnpm check:package
+   pnpm audit
    docker compose --env-file .env.example config --services
    ```
 
@@ -95,6 +99,11 @@ Before opening a pull request:
 Public command output is part of the product. If you change JSON object names,
 headers, exit codes, environment variables, or command names, call that out in
 the pull request.
+
+Before tagging a release, set `package.json` to the intended version and use an
+exact matching `v<version>` tag. CI validates the tag, both supported Node versions,
+and amd64/arm64 containers before publishing. Only stable version tags update the
+`latest` image; `main` updates `edge`. The final image has no shell or package manager.
 
 ## Agent Contributions
 

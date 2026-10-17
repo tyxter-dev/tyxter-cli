@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import { endpointUrl, HttpStatusError, type FetchLike, readFailure } from './http.js';
 import { ListenWebhookEventsResponseSchema, type ListenWebhookEventsResponse } from './schemas.js';
@@ -33,6 +34,8 @@ export interface ForwardingListenerOptions extends ListenerOptions {
 }
 
 export interface RunListenerOptions extends ForwardingListenerOptions {
+  /** Maximum recent event ids retained in the final result; onBatch always receives every id. */
+  readonly retainedEventIds?: number;
   readonly pollIntervalMs: number;
   readonly maxPollIntervalMs: number;
   readonly once: boolean;
@@ -156,6 +159,10 @@ export async function runListener(options: RunListenerOptions): Promise<PollResu
 
     delivered += result.delivered;
     forwardedEventIds.push(...result.eventIds);
+    const retained = options.retainedEventIds ?? 1000;
+    if (forwardedEventIds.length > retained) {
+      forwardedEventIds.splice(0, forwardedEventIds.length - retained);
+    }
     cursor = result.cursor ?? cursor;
     hasMore = result.hasMore;
     nextPollAfterMs = result.nextPollAfterMs;
@@ -223,6 +230,7 @@ export async function forwardEvent(input: {
       body: rawBody,
     });
     if (!response.ok) await readFailure(response, 'local webhook forward');
+    await response.body?.cancel();
   } finally {
     clearTimeout(timeout);
     input.signal?.removeEventListener('abort', abortForward);
@@ -253,17 +261,10 @@ function withJitter(ms: number, options: RunListenerOptions): number {
   return Math.max(0, ms * factor);
 }
 
-function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
-  if (signal?.aborted) return Promise.resolve();
-  return new Promise((resolve) => {
-    const timeout = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        resolve();
-      },
-      { once: true },
-    );
-  });
+async function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  try {
+    await delay(ms, undefined, { signal });
+  } catch (error) {
+    if (!signal?.aborted) throw error;
+  }
 }

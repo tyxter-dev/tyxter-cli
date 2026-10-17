@@ -1,6 +1,6 @@
 import type { DoctorOptions } from './doctor.js';
 import type { ResendListenEventOptions } from './events.js';
-import { createListenSigningSecret, type RunListenerOptions } from './listener.js';
+import type { RunListenerOptions } from './listener.js';
 import type { TailWebhookLogsOptions } from './logs.js';
 import type { CheckpointOptions } from './checkpoint.js';
 import type { SimulateInboundOptions } from './simulate.js';
@@ -12,6 +12,7 @@ export const DEFAULT_API_URL = 'https://api.tyxter.com';
 
 export type CliCommand =
   | { kind: 'help' }
+  | { kind: 'version' }
   | { kind: 'listen'; options: CliListenOptions }
   | { kind: 'listen-production'; options: CliProductionListenOptions }
   | { kind: 'print-secret'; options: CliPrintSecretOptions }
@@ -64,7 +65,9 @@ export interface CliLogsTailOptions extends TailWebhookLogsOptions {
   readonly json: boolean;
 }
 
-export interface CliTourOptions extends TourOptions {
+export interface CliTourOptions extends Omit<TourOptions, 'signingSecret'> {
+  readonly signingSecret?: string;
+  readonly stateDir: string;
   readonly json: boolean;
 }
 
@@ -92,6 +95,9 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
   ) {
     return { kind: 'help' };
   }
+
+  if (booleanOption(parsed, 'version')) return { kind: 'version' };
+  validateCommand(parsed);
 
   if (command === 'listen') {
     if (subcommand === 'prod' || subcommand === 'production') {
@@ -269,9 +275,8 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
         apiUrl: stringOption(parsed, env, 'api-url', 'TYXTER_API_URL') ?? DEFAULT_API_URL,
         apiKey: requiredString(parsed, env, 'api-key', 'TYXTER_API_KEY'),
         forwardTo: requiredString(parsed, env, 'forward-to', 'TYXTER_WEBHOOK_FORWARD_URL'),
-        signingSecret:
-          stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET') ??
-          createListenSigningSecret(),
+        signingSecret: stringOption(parsed, env, 'secret', 'TYXTER_WEBHOOK_SECRET'),
+        stateDir: stateDirOption(parsed, env),
         channel: channelOption(parsed, env),
         from: requiredString(parsed, env, 'from', 'TYXTER_SIMULATE_FROM'),
         to: requiredString(parsed, env, 'to', 'TYXTER_SIMULATE_TO'),
@@ -325,7 +330,7 @@ export function parseCli(argv: readonly string[], env: NodeJS.ProcessEnv): CliCo
     };
   }
 
-  return { kind: 'help' };
+  throw new Error(`Unknown command: ${parsed.positionals.join(' ')}`);
 }
 
 export function helpText(): string {
@@ -333,6 +338,7 @@ export function helpText(): string {
     'Tyxter CLI',
     '',
     'Usage:',
+    '  tyxter --version',
     '  tyxter listen --api-key <tx_sandbox_...> --forward-to <url>',
     '  tyxter listen prod --api-key <tx_live_...> --forward-to <url> [--ttl-seconds 300]',
     '  tyxter listen --from-now --api-key <tx_sandbox_...> --forward-to <url>',
@@ -348,6 +354,12 @@ export function helpText(): string {
     '  tyxter status',
     '  tyxter status --print-secret',
     '',
+    'Options:',
+    '  --state-dir <path>  Shared local signing state (also used by tour)',
+    '  --json              JSON output (JSON Lines for streaming commands)',
+    '  --help, -h          Show help',
+    '  --version, -V       Show the package version',
+    '',
     'Environment:',
     `  TYXTER_API_URL=${DEFAULT_API_URL}`,
     '  TYXTER_API_KEY=tx_sandbox_...',
@@ -362,35 +374,96 @@ export function helpText(): string {
   ].join('\n');
 }
 
+const BOOLEAN_FLAGS = new Set(['help', 'h', 'version', 'once', 'from-now', 'json', 'print-secret']);
+const COMMON_FLAGS = ['api-url', 'api-key', 'json'];
+const STATE_FLAGS = ['secret', 'state-dir'];
+const FILTER_FLAGS = ['event-type', 'events'];
+const TIMING_FLAGS = ['poll-interval-ms', 'max-poll-interval-ms', 'wait-ms', 'limit'];
+const SIMULATE_FLAGS = ['from', 'to', 'body', 'channel', 'trace-id', 'idempotency-key'];
+const COMMAND_FLAGS: Record<string, readonly string[]> = {
+  listen: [
+    ...COMMON_FLAGS, ...STATE_FLAGS, ...FILTER_FLAGS, ...TIMING_FLAGS,
+    'forward-to', 'cursor', 'once', 'from-now', 'print-secret',
+  ],
+  'listen prod': [
+    ...COMMON_FLAGS, ...STATE_FLAGS, ...FILTER_FLAGS, ...TIMING_FLAGS,
+    'forward-to', 'once', 'ttl-seconds', 'reason',
+  ],
+  checkpoint: [...COMMON_FLAGS, ...STATE_FLAGS, ...FILTER_FLAGS, 'cursor', 'limit'],
+  'simulate inbound': [...COMMON_FLAGS, ...SIMULATE_FLAGS],
+  'events resend': [...COMMON_FLAGS, ...STATE_FLAGS, 'forward-to'],
+  'logs tail': [...COMMON_FLAGS, ...FILTER_FLAGS, 'status', 'last', 'poll-interval-ms'],
+  tour: [
+    ...COMMON_FLAGS, ...STATE_FLAGS, ...SIMULATE_FLAGS,
+    'forward-to', 'cursor', 'poll-attempts', 'poll-interval-ms',
+  ],
+  doctor: [...COMMON_FLAGS, ...STATE_FLAGS, 'forward-to'],
+  status: [...STATE_FLAGS, 'json', 'print-secret'],
+};
+const KNOWN_FLAGS = new Set([...BOOLEAN_FLAGS, ...Object.values(COMMAND_FLAGS).flat()]);
+const BOOLEAN_VALUES = ['1', '0', 'true', 'false', 'yes', 'no', 'on', 'off'];
+
 function parseArgs(argv: readonly string[]): ParsedArgs {
   const positionals: string[] = [];
   const options: Record<string, string | boolean> = {};
-
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (!arg) continue;
-    if (!arg.startsWith('--')) {
+    if (arg === '--') {
+      positionals.push(...argv.slice(i + 1));
+      break;
+    }
+    if (arg === '-h' || arg === '-V') {
+      options[arg === '-h' ? 'help' : 'version'] = true;
+      continue;
+    }
+    if (!arg.startsWith('-')) {
       positionals.push(arg);
       continue;
     }
-
-    const raw = arg.slice(2);
-    const equals = raw.indexOf('=');
-    if (equals >= 0) {
-      options[raw.slice(0, equals)] = raw.slice(equals + 1);
-      continue;
-    }
-
+    if (!arg.startsWith('--')) throw new Error(`Unknown option: ${arg}`);
+    const [flag, ...parts] = arg.slice(2).split('=');
+    if (!KNOWN_FLAGS.has(flag)) throw new Error(`Unknown option: --${flag}`);
+    const inline = parts.length > 0 ? parts.join('=') : undefined;
     const next = argv[i + 1];
-    if (!next || next.startsWith('--')) {
-      options[raw] = true;
-      continue;
+    if (BOOLEAN_FLAGS.has(flag)) {
+      const value = inline ?? (
+        next && BOOLEAN_VALUES.includes(next.toLowerCase()) ? argv[++i] : undefined
+      );
+      if (value !== undefined && !BOOLEAN_VALUES.includes(value.toLowerCase())) {
+        throw new Error(`--${flag} must be a boolean`);
+      }
+      options[flag] = value ?? true;
+    } else {
+      const value = inline ?? (next && !next.startsWith('-') ? argv[++i] : undefined);
+      if (value === undefined || value.length === 0) throw new Error(`Missing value for --${flag}`);
+      options[flag] = value;
     }
-    options[raw] = next;
-    i += 1;
   }
-
   return { positionals, options };
+}
+
+function validateCommand(parsed: ParsedArgs): void {
+  const [command = 'listen', subcommand] = parsed.positionals;
+  let key = command;
+  let count = 1;
+  if (command === 'listen' && subcommand) {
+    if (subcommand !== 'prod' && subcommand !== 'production') {
+      throw new Error(`Unknown listen mode: ${subcommand}`);
+    }
+    key = 'listen prod';
+    count = 2;
+  } else if (['simulate', 'events', 'logs'].includes(command)) {
+    key = `${command} ${subcommand ?? ''}`;
+    count = command === 'events' ? 3 : 2;
+  }
+  const allowed = COMMAND_FLAGS[key];
+  if (!allowed) throw new Error(`Unknown command: ${parsed.positionals.join(' ')}`);
+  if (parsed.positionals.length > count) throw new Error('Unexpected positional arguments');
+  for (const flag of Object.keys(parsed.options)) {
+    if (!['help', 'h', 'version'].includes(flag) && !allowed.includes(flag)) {
+      throw new Error(`--${flag} is not supported by ${key}`);
+    }
+  }
 }
 
 function requiredString(

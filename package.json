@@ -7,7 +7,7 @@
     "tyxter": "./dist/main.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm clean && tsc -p tsconfig.build.json",
     "dev": "tsx src/main.ts",
     "doctor": "tsx src/main.ts doctor",
     "start": "node dist/main.js",
@@ -15,19 +15,31 @@
     "tour:demo": "node scripts/tour-demo.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\""
+    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\"",
+    "prepack": "pnpm build",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dependencies": {
-    "zod": "^4.3.6"
+    "proper-lockfile": "^4.1.2",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^25.6.0",
-    "tsx": "^4.21.0",
+    "@types/node": "^25.9.9",
+    "@types/proper-lockfile": "^4.1.4",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
   },
   "engines": {
     "node": ">=22.12.0",
     "pnpm": ">=10.0.0"
-  }
+  },
+  "packageManager": "pnpm@10.34.5",
+  "files": [
+    "dist/*.js",
+    "dist/*.d.ts",
+    "dist/*.js.map",
+    "README.md"
+  ]
 }

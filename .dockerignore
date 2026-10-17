@@ -3,6 +3,8 @@ dist
 coverage
 .turbo
 *.tsbuildinfo
+.tyxter-cli
+.hubgrid-artifacts
 
 .git
 .github
