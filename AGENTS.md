@@ -151,7 +151,10 @@ Rebuild the container (`docker compose build`) if you changed anything under
 - State updates use a cross-process lock and private directory/file permissions.
 - Unknown commands, unsupported flags, and missing flag values must fail rather than fall back silently.
 - `--version`/`-V` prints the package version without requiring credentials.
-- Publishing depends on validation for Node 22.12/24 and linux/amd64/linux/arm64.
+- Build tooling pins npm 12.2.0 and pnpm 12.14.0; npm 12 requires Node 22.22.2+ or 24.15+.
+- Install pnpm directly with `npm install -g --allow-scripts=pnpm pnpm@12.14.0`, without Corepack.
+- Publishing depends on build validation for Node 22.22.2/24, runtime tests for Node 22.12,
+  and linux/amd64/linux/arm64 containers.
   Only matching stable version tags update `latest`; main builds use `edge`.
 
 - Refuse live keys for normal sandbox commands (`listen`, `checkpoint`,

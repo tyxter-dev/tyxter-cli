@@ -340,6 +340,9 @@ Optional environment variables: `TYXTER_API_URL`, `TYXTER_TOUR_PORT`,
 
 ## Releases
 
+Build tooling pins npm 12.2.0 and pnpm 12.14.0. Development requires Node 22.22.2+
+or 24.15+; the CLI runtime retains support for Node 22.12+.
+
 Pull requests and image publishing run typecheck, tests, package validation,
 dependency audit, and container smoke checks. Container checks cover linux/amd64
 and linux/arm64. The runtime uses Node 24 in a distroless image with no shell or

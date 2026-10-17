@@ -40,9 +40,10 @@ available through Tyxter support.
 
 Requirements:
 
-- Node.js 22.12 or newer.
-- pnpm 10 or newer.
-- Use the package-manager version pinned in `package.json` through Corepack.
+- Node.js 22.22.2+ or 24.15+ for development with npm 12. The CLI runtime supports Node 22.12+.
+- npm 12.2.0 and pnpm 12.14.0 for build and package validation.
+- Install the pinned versions directly: `npm install -g npm@12.2.0` followed by
+  `npm install -g --allow-scripts=pnpm pnpm@12.14.0`.
 - Docker Desktop or a compatible Docker engine.
 
 Set up the repo:
