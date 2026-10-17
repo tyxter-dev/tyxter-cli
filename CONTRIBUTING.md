@@ -42,13 +42,14 @@ Requirements:
 
 - Node.js 22.22.2+ or 24.15+ for development with npm 12. The CLI runtime supports Node 22.12+.
 - npm 12.2.0 and pnpm 12.14.0 for build and package validation.
-- Install the pinned versions directly: `npm install -g npm@12.2.0` followed by
-  `npm install -g --allow-scripts=pnpm pnpm@12.14.0`.
 - Docker Desktop or a compatible Docker engine.
 
-Set up the repo:
+Set up the repo with direct npm installs. Bootstrap the npm upgrade from an isolated
+copy to avoid the bundled npm self-upgrade bug on Node 22.22.2:
 
 ```bash
+npm exec --yes --package=npm@12.2.0 -- npm install --global npm@12.2.0
+npm install --global --allow-scripts=pnpm pnpm@12.14.0
 pnpm install
 pnpm test
 pnpm build
