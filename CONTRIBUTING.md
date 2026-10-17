@@ -42,6 +42,7 @@ Requirements:
 
 - Node.js 22.22.2+ or 24.15+ for development with npm 12. The CLI runtime supports Node 22.12+.
 - npm 12.2.0 and pnpm 12.14.0 for build and package validation.
+- TypeScript 7 and Vitest 5, installed with the project's development dependencies.
 - Docker Desktop or a compatible Docker engine.
 
 Set up the repo with direct npm installs. Bootstrap the npm upgrade from an isolated

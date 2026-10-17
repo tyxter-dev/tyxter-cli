@@ -342,6 +342,8 @@ Optional environment variables: `TYXTER_API_URL`, `TYXTER_TOUR_PORT`,
 
 Build tooling pins npm 12.2.0 and pnpm 12.14.0. Development requires Node 22.22.2+
 or 24.15+; the CLI runtime retains support for Node 22.12+.
+TypeScript 7 and Vitest 5 are development dependencies. The container ships
+compiled JavaScript and production dependencies only.
 
 Pull requests and image publishing run typecheck, tests, package validation,
 dependency audit, and container smoke checks. Container checks cover linux/amd64

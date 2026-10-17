@@ -80,7 +80,7 @@ body:
         OS: Windows 11
         Docker: Docker Desktop 4.x
         Node: 24.x
-        pnpm: 10.x
+        pnpm: 12.x
         App framework: Next.js route handler
     validations:
       required: true

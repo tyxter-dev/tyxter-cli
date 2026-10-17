@@ -117,7 +117,7 @@ State defaults to `./.tyxter-cli/`; override with `--state-dir` or
 
 ## Coding Rules
 
-- TypeScript strict, ESM (`"type": "module"`), Node `>= 22.12`. Always import
+- TypeScript 7 strict, Vitest 5, ESM (`"type": "module"`), Node `>= 22.12`. Always import
   with explicit `.js` extensions from `.ts` sources (e.g. `./args.js`).
 - Validate every external payload with Zod schemas in `src/schemas.ts`. Never
   trust raw JSON from the API or the forwarded request body.
