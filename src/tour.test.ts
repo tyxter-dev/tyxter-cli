@@ -238,3 +238,88 @@ describe('tour command', () => {
     ).toBe(true);
   });
 });
+
+describe('tour polling backoff', () => {
+  const options = {
+    apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test',
+    forwardTo: 'http://receiver.test', signingSecret: 'test-secret',
+    from: 'test-from', to: 'test-to', body: 'test', cursor: 'cur_start',
+    pollAttempts: 2, pollIntervalMs: 1000,
+  };
+  const simulated = {
+    id: 'msg_test', object: 'message', status: 'received', environment: 'sandbox',
+    created_at: '2026-05-09T12:00:00.000Z', trace_id: 'trc_test',
+  };
+  const page = (delivered: boolean, cursor: string, nextPollAfterMs = 0) => Response.json({
+    object: 'webhook_event_listen',
+    data: delivered ? [{ id: 'event_test', source_id: simulated.id, payload: {} }] : [],
+    has_more: false, next_cursor: cursor, next_poll_after_ms: nextPollAfterMs,
+  });
+
+  it('retries the same cursor without consuming attempts or simulating again', async () => {
+    const sleeps: number[] = [];
+    const cursors: Array<string | null> = [];
+    let simulations = 0;
+    const responses = [
+      page(false, 'cur_next', 4000),
+      new Response('{}', { status: 429, headers: { 'retry-after': '2' } }),
+      Response.json({ error: { retry_after_ms: 3500 } }, { status: 429 }),
+      page(true, 'cur_done'),
+    ];
+    const result = await runTour({
+      ...options, sleep: async (ms) => { sleeps.push(ms); },
+      fetchFn: async (input) => {
+        const url = new URL(String(input));
+        if (url.pathname.endsWith('inbound-messages')) {
+          simulations++;
+          return Response.json(simulated);
+        }
+        if (url.hostname === 'receiver.test') return new Response(null, { status: 204 });
+        cursors.push(url.searchParams.get('cursor'));
+        return responses.shift()!;
+      },
+    });
+    expect(result).toMatchObject({ attempts: 2, listen: { delivered: 1, cursor: 'cur_done' } });
+    expect(simulations).toBe(1);
+    expect(cursors).toEqual(['cur_start', 'cur_next', 'cur_next', 'cur_next']);
+    expect(sleeps).toEqual([4000, 2000, 3500]);
+  });
+
+  it('caps fallback backoff and resets it after a successful poll', async () => {
+    const sleeps: number[] = [];
+    let polls = 0;
+    await runTour({
+      ...options, pollIntervalMs: 20_000,
+      sleep: async (ms) => { sleeps.push(ms); },
+      fetchFn: async (input) => {
+        const url = String(input);
+        if (url.includes('inbound-messages')) return Response.json(simulated);
+        if (url.includes('receiver.test')) return new Response(null, { status: 204 });
+        polls++;
+        if (polls === 4) return page(false, 'cur_next', 1000);
+        if (polls === 6) return page(true, 'cur_done');
+        return new Response('{}', { status: 429 });
+      },
+    });
+    expect(sleeps).toEqual([20_000, 30_000, 30_000, 20_000, 20_000]);
+  });
+
+  it.each([429, 500])('does not retry local forwarding failures with HTTP %i', async (status) => {
+    let forwards = 0;
+    const sleeps: number[] = [];
+    await expect(runTour({
+      ...options, sleep: async (ms) => { sleeps.push(ms); },
+      fetchFn: async (input) => {
+        const url = String(input);
+        if (url.includes('inbound-messages')) return Response.json(simulated);
+        if (url.includes('receiver.test')) {
+          forwards++;
+          return new Response('{}', { status });
+        }
+        return page(true, 'cur_done');
+      },
+    })).rejects.toMatchObject({ status, action: 'local webhook forward' });
+    expect(forwards).toBe(1);
+    expect(sleeps).toEqual([]);
+  });
+});

@@ -1,4 +1,4 @@
-import type { FetchLike } from './http.js';
+import { HttpStatusError, type FetchLike } from './http.js';
 import { checkpointListenCursor } from './checkpoint.js';
 import { pollOnce, type PollResult } from './listener.js';
 import type { MessageResponse } from './schemas.js';
@@ -20,6 +20,7 @@ export interface TourOptions {
   readonly pollIntervalMs: number;
   readonly fetchFn?: FetchLike;
   readonly now?: () => number;
+  readonly sleep?: (ms: number) => Promise<void>;
   readonly onStep?: (message: string) => void;
 }
 
@@ -59,27 +60,43 @@ export async function runTour(options: TourOptions): Promise<TourResult> {
   });
 
   let lastListen: PollResult = { delivered: 0, eventIds: [], cursor, hasMore: false };
-  for (let attempt = 1; attempt <= options.pollAttempts; attempt++) {
+  let retryDelayMs = Math.min(30_000, options.pollIntervalMs);
+  for (let attempt = 1; attempt <= options.pollAttempts;) {
     options.onStep?.(`listen attempt ${attempt}`);
-    lastListen = await pollOnce({
-      apiUrl: options.apiUrl,
-      apiKey: options.apiKey,
-      forwardTo: options.forwardTo,
-      signingSecret: options.signingSecret,
-      eventType: 'message.received',
-      limit: 100,
-      cursor: cursor ?? undefined,
-      shouldForward: (event) => event.source_id === simulated.id,
-      fetchFn: options.fetchFn,
-      now: options.now,
-    });
+    try {
+      lastListen = await pollOnce({
+        apiUrl: options.apiUrl,
+        apiKey: options.apiKey,
+        forwardTo: options.forwardTo,
+        signingSecret: options.signingSecret,
+        eventType: 'message.received',
+        limit: 100,
+        cursor: cursor ?? undefined,
+        shouldForward: (event) => event.source_id === simulated.id,
+        fetchFn: options.fetchFn,
+        now: options.now,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof HttpStatusError) ||
+        error.status !== 429 ||
+        error.action !== 'webhook event listen'
+      ) throw error;
+      await (options.sleep ?? sleep)(error.retryAfterMs ?? retryDelayMs);
+      retryDelayMs = Math.min(30_000, retryDelayMs * 2);
+      continue;
+    }
+    retryDelayMs = Math.min(30_000, options.pollIntervalMs);
     cursor = lastListen.cursor ?? cursor;
     if (lastListen.delivered > 0) {
       return { simulated, listen: lastListen, attempts: attempt };
     }
     if (attempt < options.pollAttempts) {
-      await sleep(options.pollIntervalMs);
+      await (options.sleep ?? sleep)(Math.max(
+        options.pollIntervalMs, lastListen.nextPollAfterMs ?? 0,
+      ));
     }
+    attempt += 1;
   }
 
   throw new Error(

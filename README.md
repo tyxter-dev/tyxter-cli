@@ -40,6 +40,9 @@ events.
 Checkpointing honors `429 Retry-After` responses and retries the current page,
 including when invoked by `listen --from-now` or `tour`.
 
+Tour polling also retries rate-limited listen requests without consuming a poll
+attempt or repeating simulation, and respects the server polling delay.
+
 ## Use The Published Image
 
 Run the image directly:
