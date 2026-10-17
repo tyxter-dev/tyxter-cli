@@ -71,7 +71,7 @@ export const WebhookListenSessionResponseSchema = z.object({
   object: z.literal('webhook_listen_session'),
   environment: z.literal('production'),
   status: z.enum(['active', 'disabled', 'expired']),
-  expires_at: z.string(),
+  expires_at: z.iso.datetime({ offset: true }),
   disabled_at: z.string().nullable(),
   created_at: z.string(),
   trace_id: z.string(),

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { FetchLike } from './http.js';
 import {
@@ -7,6 +7,20 @@ import {
 } from './listen-session.js';
 
 describe('production webhook listen sessions', () => {
+  it('bounds creation and cleanup requests including pending responses', async () => {
+    vi.useFakeTimers();
+    const fetchFn: FetchLike = async (_input, init) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+    });
+    try {
+      const creation = expect(createWebhookListenSession({ apiUrl: 'http://api.test', apiKey: 'tx_live_test', fetchFn })).rejects.toMatchObject({ name: 'TimeoutError' });
+      await vi.advanceTimersByTimeAsync(5000);
+      await creation;
+      const cleanup = expect(disableWebhookListenSession({ apiUrl: 'http://api.test', apiKey: 'tx_live_test', listenSessionId: 'wls_test', fetchFn })).rejects.toMatchObject({ name: 'TimeoutError' });
+      await vi.advanceTimersByTimeAsync(3000);
+      await cleanup;
+    } finally { vi.useRealTimers(); }
+  });
   it('creates a short-lived production listen session', async () => {
     let requestUrl = '';
     let requestBody = '';

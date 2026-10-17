@@ -40,13 +40,17 @@ available through Tyxter support.
 
 Requirements:
 
-- Node.js 22.12 or newer.
-- pnpm 10 or newer.
+- Node.js 22.22.2+ or 24.15+ for development with npm 12. The CLI runtime supports Node 22.12+.
+- npm 12.2.0 and pnpm 12.14.0 for build and package validation.
+- TypeScript 7 and Vitest 5, installed with the project's development dependencies.
 - Docker Desktop or a compatible Docker engine.
 
-Set up the repo:
+Set up the repo with direct npm installs. Bootstrap the npm upgrade from an isolated
+copy to avoid the bundled npm self-upgrade bug on Node 22.22.2:
 
 ```bash
+npm exec --yes --package=npm@12.2.0 -- npm install --global npm@12.2.0
+npm install --global --allow-scripts=pnpm pnpm@12.14.0
 pnpm install
 pnpm test
 pnpm build
@@ -86,6 +90,9 @@ Before opening a pull request:
    ```bash
    pnpm test
    pnpm build
+   pnpm typecheck
+   pnpm check:package
+   pnpm audit
    docker compose --env-file .env.example config --services
    ```
 
@@ -95,6 +102,11 @@ Before opening a pull request:
 Public command output is part of the product. If you change JSON object names,
 headers, exit codes, environment variables, or command names, call that out in
 the pull request.
+
+Before tagging a release, set `package.json` to the intended version and use an
+exact matching `v<version>` tag. CI validates the tag, both supported Node versions,
+and amd64/arm64 containers before publishing. Only stable version tags update the
+`latest` image; `main` updates `edge`. The final image has no shell or package manager.
 
 ## Agent Contributions
 

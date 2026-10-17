@@ -1,5 +1,26 @@
 export type FetchLike = typeof fetch;
 
+export async function withRequestTimeout<T>(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  run: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(signal?.reason);
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException('API request timed out', 'TimeoutError'));
+  }, timeoutMs);
+  if (signal?.aborted) abort();
+  else signal?.addEventListener('abort', abort, { once: true });
+  try {
+    controller.signal.throwIfAborted();
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+}
+
 export class HttpStatusError extends Error {
   constructor(
     message: string,

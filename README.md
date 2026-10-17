@@ -83,6 +83,7 @@ docker run --rm \
 ## Commands
 
 ```bash
+tyxter --version
 tyxter listen
 tyxter listen prod --api-key tx_live_... --forward-to http://localhost:3000/webhooks/tyxter
 tyxter listen --from-now
@@ -108,6 +109,15 @@ forwarding historical events in one command.
 `simulate inbound` and `tour` default to WhatsApp inbound simulation. Pass
 `--channel instagram` or set `TYXTER_SIMULATE_CHANNEL=instagram` to seed an
 Instagram DM inbound user for local reply-policy testing.
+
+`tour` uses the persisted local signing secret from the same `--state-dir` as
+the listener. It leaves the listener's stored cursor unchanged. An explicit
+`--secret` or `TYXTER_WEBHOOK_SECRET` overrides the stored secret; any nonempty
+local test secret is supported.
+
+Unknown commands, unknown or unsupported flags, missing flag values, and extra
+positional arguments exit with an error. Boolean flags can appear before a
+subcommand, such as `tyxter listen --once prod`.
 
 `listen` uses bounded long polling by default (`TYXTER_WEBHOOK_WAIT_MS=25000`),
 backs off idle loops up to `TYXTER_WEBHOOK_MAX_POLL_INTERVAL_MS=30000`, adds
@@ -151,6 +161,12 @@ delivery to registered webhook endpoints.
 `GET /v1/webhook-events`. By default it starts from now; add `--last N` to print
 recent historical events before tailing. It follows additional pages when more
 than 100 new events arrive between polls.
+
+With `--status`, the CLI scans the complete matching history on startup and on
+each polling pass so older events that newly match the status are observed.
+Large histories require more API requests per pass. Rate-limit responses delay
+the next request according to `Retry-After`. Without `--status`, tailing stops
+at the previously observed page boundary and retains only the current head ids.
 
 If your local app verifies webhook signatures, configure it with the same local
 secret used by the CLI. Either set `TYXTER_WEBHOOK_SECRET` yourself and pass the
@@ -281,6 +297,11 @@ pnpm dev -- listen \
 The default local state directory is `.tyxter-cli`. Override it with
 `--state-dir` or `TYXTER_CLI_STATE_DIR`.
 
+State updates use a process lock and atomic replacement. On POSIX systems, the
+state directory is private (0700) and its secret-bearing files are private (0600).
+The default `.tyxter-cli/` directory is excluded from Git and Docker build context.
+Keep custom state directories out of version control too.
+
 For a one-off production diagnostic, run the finite command directly and let it
 exit:
 
@@ -316,3 +337,27 @@ Optional environment variables: `TYXTER_API_URL`, `TYXTER_TOUR_PORT`,
 - Do not paste `status` output into public issues; it includes the local signing secret.
 - The listener persists only its signing secret and cursor, not webhook payloads.
 - Verify signatures against the raw request body in your app.
+
+## Releases
+
+Build tooling pins npm 12.2.0 and pnpm 12.14.0. Development requires Node 22.22.2+
+or 24.15+; the CLI runtime retains support for Node 22.12+.
+TypeScript 7 and Vitest 5 are development dependencies. The container ships
+compiled JavaScript and production dependencies only.
+
+Pull requests and image publishing run typecheck, tests, package validation,
+dependency audit, and container smoke checks. Container checks cover linux/amd64
+and linux/arm64. The runtime uses Node 24 in a distroless image with no shell or
+package manager and preserves uid/gid 999 for existing Docker volumes.
+
+Release tags must exactly match `v<package.json version>`. Only plain stable
+version tags update `latest`; `main` publishes to `edge`. Development and
+prerelease builds cannot replace `latest`.
+
+For npm packaging, `pnpm pack` builds a clean `dist` and includes only runtime
+files and documentation. `pnpm check:package` checks the package contents without
+publishing. Tests are excluded from the production build.
+
+For programmatic listener consumers, the final result retains at most the most
+recent 1,000 event ids by default (configurable with `retainedEventIds`). Delivery
+counts remain cumulative, and `onBatch` receives every forwarded id.

@@ -5,6 +5,43 @@ import type { FetchLike } from './http.js';
 import { verifyWebhookSignature } from './signature.js';
 
 describe('webhook listener', () => {
+  it('releases abort handlers after completed idle sleeps', async () => {
+    const { getEventListeners } = await import('node:events');
+    const controller = new AbortController();
+    let calls = 0;
+    await runListener({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', forwardTo: 'http://local.test',
+      signingSecret: 'whsec_test', pollIntervalMs: 1, maxPollIntervalMs: 1,
+      once: false, signal: controller.signal, jitterRatio: 0,
+      fetchFn: async () => {
+        expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+        if (++calls === 15) controller.abort();
+        return Response.json(listenResponse([], { cursor: null }));
+      },
+    });
+    expect(calls).toBe(15);
+  });
+
+  it('bounds retained result ids while reporting every batch', async () => {
+    const controller = new AbortController();
+    const batches: string[] = [];
+    let polls = 0;
+    const result = await runListener({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', forwardTo: 'http://local.test',
+      signingSecret: 'whsec_test', pollIntervalMs: 1, maxPollIntervalMs: 1,
+      once: false, signal: controller.signal, retainedEventIds: 2,
+      fetchFn: async (input) => String(input).startsWith('http://api.test')
+        ? Response.json(listenResponse([{ id: `event_${++polls}`, payload: {} }], { cursor: `cur_${polls}`, hasMore: true }))
+        : new Response('ok'),
+      onBatch: ({ eventIds }) => {
+        batches.push(...eventIds);
+        if (batches.length === 4) controller.abort();
+      },
+    });
+    expect(result.delivered).toBe(4);
+    expect(batches).toHaveLength(4);
+    expect(result.eventIds).toEqual(['event_3', 'event_4']);
+  });
   it('polls the sandbox listen endpoint and forwards the webhook payload with Tyxter signature headers', async () => {
     let listenUrl = '';
     let authorization = '';

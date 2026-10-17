@@ -3,6 +3,30 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_API_URL, helpText, parseCli } from './args.js';
 
 describe('CLI argument parsing', () => {
+  it('parses version without credentials and booleans before subcommands', () => {
+    expect(parseCli(['--version'], {})).toEqual({ kind: 'version' });
+    expect(parseCli(['-V'], {})).toEqual({ kind: 'version' });
+    expect(parseCli(['listen', '--once', '--json', 'prod'], {
+      TYXTER_API_KEY: 'tx_live_test', TYXTER_WEBHOOK_FORWARD_URL: 'http://localhost/hook',
+    })).toMatchObject({ kind: 'listen-production', options: { once: true, json: true } });
+  });
+
+  it('rejects unknown commands, unsupported flags, extra arguments and missing flag values', () => {
+    expect(() => parseCli(['listen', '--fro-now'], {})).toThrow('Unknown option');
+    expect(() => parseCli(['listen', 'prdo'], {})).toThrow('Unknown listen mode');
+    expect(() => parseCli(['lissten'], {})).toThrow('Unknown command');
+    expect(() => parseCli(['status', 'extra'], {})).toThrow('Unexpected positional');
+    expect(() => parseCli(['status', '--events', 'message.received'], {})).toThrow('not supported');
+    expect(() => parseCli(['listen', '--api-key', '--once'], { TYXTER_API_KEY: 'tx_sandbox_test' })).toThrow('Missing value');
+    expect(() => parseCli(['listen', '--once=maybe'], {})).toThrow('must be a boolean');
+  });
+
+  it('uses persisted state options for tour instead of generating a secret during parsing', () => {
+    expect(parseCli(['tour', '--state-dir', '/data'], {
+      TYXTER_API_KEY: 'tx_sandbox_test', TYXTER_WEBHOOK_FORWARD_URL: 'http://localhost/hook',
+      TYXTER_SIMULATE_FROM: 'sender', TYXTER_SIMULATE_TO: 'recipient',
+    })).toMatchObject({ kind: 'tour', options: { stateDir: '/data', signingSecret: undefined } });
+  });
   it('parses top-level help flags', () => {
     expect(parseCli(['--help'], {})).toEqual({ kind: 'help' });
     expect(parseCli(['-h'], {})).toEqual({ kind: 'help' });

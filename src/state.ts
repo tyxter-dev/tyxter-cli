@@ -1,5 +1,7 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { chmod, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { lock } from 'proper-lockfile';
 
 import { createListenSigningSecret } from './listener.js';
 
@@ -37,23 +39,58 @@ export async function readListenerState(stateDir: string): Promise<ListenerState
 export async function resolveListenerState(
   options: ResolveListenerStateOptions,
 ): Promise<ListenerState> {
-  const existing = await readListenerState(options.stateDir);
-  const state: ListenerState = {
-    signingSecret:
-      options.signingSecret ?? existing?.signingSecret ?? createListenSigningSecret(),
-    cursor: options.cursor ?? existing?.cursor ?? null,
-    updatedAt: (options.now?.() ?? new Date()).toISOString(),
-  };
-  await writeListenerState(options.stateDir, state);
-  return state;
+  return withStateLock(options.stateDir, async () => {
+    const existing = await readListenerState(options.stateDir);
+    if (existing) await chmod(stateFilePath(options.stateDir), 0o600);
+    const state: ListenerState = {
+      signingSecret:
+        options.signingSecret ?? existing?.signingSecret ?? createListenSigningSecret(),
+      cursor: options.cursor ?? existing?.cursor ?? null,
+      updatedAt: (options.now?.() ?? new Date()).toISOString(),
+    };
+    // Diagnostics must not rewrite an existing cursor from a stale snapshot.
+    if (
+      existing && state.signingSecret === existing.signingSecret && state.cursor === existing.cursor
+    ) {
+      return existing;
+    }
+    await writeStateAtomically(options.stateDir, state);
+    return state;
+  });
 }
 
 export async function writeListenerState(stateDir: string, state: ListenerState): Promise<void> {
-  await mkdir(stateDir, { recursive: true });
+  await withStateLock(stateDir, () => writeStateAtomically(stateDir, state));
+}
+
+async function withStateLock<T>(stateDir: string, update: () => Promise<T>): Promise<T> {
+  await mkdir(stateDir, { recursive: true, mode: 0o700 });
+  await chmod(stateDir, 0o700);
+  const release = await lock(stateDir, {
+    lockfilePath: join(stateDir, '.listener-state.lock'),
+    stale: 5_000,
+    update: 2_000,
+    retries: { retries: 100, minTimeout: 10, maxTimeout: 100, factor: 1.2 },
+  });
+  try {
+    return await update();
+  } finally {
+    await release();
+  }
+}
+
+async function writeStateAtomically(stateDir: string, state: ListenerState): Promise<void> {
+  parseListenerState(state);
   const path = stateFilePath(stateDir);
-  const tmp = `${path}.tmp`;
-  await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-  await rename(tmp, path);
+  const tmp = `${path}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, {
+      encoding: 'utf8', mode: 0o600, flag: 'wx',
+    });
+    await rename(tmp, path);
+  } finally {
+    await rm(tmp, { force: true });
+  }
 }
 
 function parseListenerState(value: unknown): ListenerState {
@@ -64,7 +101,7 @@ function parseListenerState(value: unknown): ListenerState {
   const signingSecret = record.signingSecret;
   const cursor = record.cursor;
   const updatedAt = record.updatedAt;
-  if (typeof signingSecret !== 'string' || !signingSecret.startsWith('whsec_')) {
+  if (typeof signingSecret !== 'string' || signingSecret.length === 0) {
     throw new Error('Listener state file has an invalid signingSecret.');
   }
   if (cursor !== null && cursor !== undefined && typeof cursor !== 'string') {

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs';
+
 import { parseCli, helpText } from './args.js';
 import { checkpointListenCursor } from './checkpoint.js';
 import { runDoctor } from './doctor.js';
@@ -20,6 +22,13 @@ import { runTour } from './tour.js';
 async function main(): Promise<void> {
   try {
     const command = parseCli(process.argv.slice(2), process.env);
+    if (command.kind === 'version') {
+      const metadata = JSON.parse(
+        readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+      ) as { version: string };
+      console.log(metadata.version);
+      return;
+    }
     if (command.kind === 'help') {
       console.log(helpText());
       return;
@@ -52,6 +61,8 @@ async function main(): Promise<void> {
         | Awaited<ReturnType<typeof createWebhookListenSession>>
         | undefined;
       let primaryError: unknown;
+      const controller = new AbortController();
+      const removeSignalHandlers = bindAbortSignals(controller);
 
       try {
         session = await createWebhookListenSession({
@@ -78,9 +89,9 @@ async function main(): Promise<void> {
           console.log(`Local signing secret: ${listenerState.signingSecret}`);
         }
 
-        const controller = new AbortController();
-        const removeSignalHandlers = bindAbortSignals(controller);
-        const expiresInMs = Math.max(0, Date.parse(session.expires_at) - Date.now());
+        const expiresInMs = Math.min(
+          ttlSeconds * 1000, Math.max(0, Date.parse(session.expires_at) - Date.now()),
+        );
         const expiryTimer = setTimeout(() => controller.abort(), expiresInMs);
         expiryTimer.unref();
         try {
@@ -147,36 +158,39 @@ async function main(): Promise<void> {
           });
         } finally {
           clearTimeout(expiryTimer);
-          removeSignalHandlers();
         }
       } catch (error) {
         primaryError = error;
         throw error;
       } finally {
-        if (session) {
-          try {
-            const disabled = await disableWebhookListenSession({
-              apiUrl: listenOptions.apiUrl,
-              apiKey: listenOptions.apiKey,
-              listenSessionId: session.id,
-            });
-            if (json) {
-              console.log(
-                compactJson({
-                  object: 'tyxter_cli_listen_session',
-                  action: 'disabled',
-                  listen_session_id: disabled.id,
-                  status: disabled.status,
-                  disabled_at: disabled.disabled_at,
-                }),
-              );
-            } else {
-              console.log(`Disabled production listen session ${disabled.id}`);
+        try {
+          if (session) {
+            try {
+              const disabled = await disableWebhookListenSession({
+                apiUrl: listenOptions.apiUrl,
+                apiKey: listenOptions.apiKey,
+                listenSessionId: session.id,
+              });
+              if (json) {
+                console.log(
+                  compactJson({
+                    object: 'tyxter_cli_listen_session',
+                    action: 'disabled',
+                    listen_session_id: disabled.id,
+                    status: disabled.status,
+                    disabled_at: disabled.disabled_at,
+                  }),
+                );
+              } else {
+                console.log(`Disabled production listen session ${disabled.id}`);
+              }
+            } catch (cleanupError) {
+              if (!primaryError) throw cleanupError;
+              printCleanupWarning(cleanupError, json, session.id);
             }
-          } catch (cleanupError) {
-            if (!primaryError) throw cleanupError;
-            printCleanupWarning(cleanupError, json, session.id);
           }
+        } finally {
+          removeSignalHandlers();
         }
       }
       return;
@@ -203,6 +217,7 @@ async function main(): Promise<void> {
           apiKey: listenOptions.apiKey,
           cursor: startCursor ?? undefined,
           eventType: listenOptions.eventType,
+          eventTypes: listenOptions.eventTypes,
           limit: listenOptions.limit,
         });
         startCursor = checkpoint.cursor ?? startCursor;
@@ -376,13 +391,18 @@ async function main(): Promise<void> {
 
     if (command.kind === 'tour') {
       assertSandboxApiKey(command.options.apiKey, 'tyxter tour');
+      const state = await resolveListenerState({
+        stateDir: command.options.stateDir,
+        signingSecret: command.options.signingSecret,
+      });
       if (!command.options.json) {
         console.log(`Running tour against ${command.options.apiUrl}`);
         console.log(`Forwarding sandbox webhooks to ${command.options.forwardTo}`);
-        console.log(`Local signing secret: ${command.options.signingSecret}`);
+        console.log(`Local signing secret: ${state.signingSecret}`);
       }
       const result = await runTour({
         ...command.options,
+        signingSecret: state.signingSecret,
         onStep: command.options.json ? undefined : (message) => console.log(`tour: ${message}`),
       });
       printJson(
@@ -439,8 +459,8 @@ function assertSandboxApiKey(apiKey: string, commandName: string): void {
 
 function bindAbortSignals(controller: AbortController): () => void {
   const abort = () => controller.abort();
-  process.once('SIGINT', abort);
-  process.once('SIGTERM', abort);
+  process.on('SIGINT', abort);
+  process.on('SIGTERM', abort);
   return () => {
     process.off('SIGINT', abort);
     process.off('SIGTERM', abort);

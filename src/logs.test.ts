@@ -5,6 +5,87 @@ import { readWebhookEventsPage, tailWebhookLogs } from './logs.js';
 import type { WebhookEventLog } from './schemas.js';
 
 describe('webhook logs tail', () => {
+  it('releases abort handlers after idle sleeps', async () => {
+    const { getEventListeners } = await import('node:events');
+    const controller = new AbortController();
+    let calls = 0;
+    await tailWebhookLogs({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', last: 0,
+      pollIntervalMs: 1, signal: controller.signal,
+      fetchFn: async () => {
+        // The active HTTP request owns one temporary handler; completed sleeps own none.
+        expect(getEventListeners(controller.signal, 'abort')).toHaveLength(1);
+        if (++calls === 15) controller.abort();
+        return Response.json(listResponse([]));
+      },
+    });
+    expect(calls).toBe(15);
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0);
+  });
+
+  it('honors Retry-After while scanning status history', async () => {
+    const controller = new AbortController();
+    const delays: number[] = [];
+    let calls = 0;
+    await tailWebhookLogs({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', status: 'failed', last: 0,
+      pollIntervalMs: 1000, signal: controller.signal,
+      fetchFn: async () => ++calls === 1
+        ? new Response('{}', { status: 429, headers: { 'retry-after': '2' } })
+        : Response.json(listResponse([])),
+      sleep: async (ms) => { delays.push(ms); if (calls === 2) controller.abort(); },
+    });
+    expect(delays).toEqual([2000, 1000]);
+  });
+  it('seeds all status history and observes new failures beyond the first page', async () => {
+    const controller = new AbortController();
+    const emitted: string[] = [];
+    let requests = 0;
+    let passes = 0;
+    await tailWebhookLogs({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', status: 'failed',
+      last: 1, pollIntervalMs: 1, signal: controller.signal,
+      fetchFn: async (input) => {
+        requests++;
+        const cursor = new URL(String(input)).searchParams.get('starting_after');
+        if (!cursor) return Response.json({
+          ...listResponse(Array.from({ length: 100 }, (_, i) => event(`known_${i}`))),
+          has_more: true, next_cursor: 'older',
+        });
+        return Response.json(listResponse(passes === 0
+          ? [event('older_history')]
+          : [event('newly_failed_old_event'), event('older_history')]));
+      },
+      sleep: async () => { if (++passes === 2) controller.abort(); },
+      onEvent: (entry) => { emitted.push(entry.id); },
+    });
+    expect(requests).toBe(4);
+    expect(emitted).toEqual(['known_0', 'newly_failed_old_event']);
+  });
+
+  it('cancels an in-flight list request without emitting an error', async () => {
+    const controller = new AbortController();
+    let started!: () => void;
+    const ready = new Promise<void>((resolve) => { started = resolve; });
+    const running = tailWebhookLogs({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', last: 0,
+      pollIntervalMs: 1, signal: controller.signal,
+      fetchFn: async (_input, init) => new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true });
+        started();
+      }),
+    });
+    await ready;
+    controller.abort();
+    await expect(running).resolves.toEqual({ emitted: 0 });
+  });
+
+  it('detects non-advancing status pagination', async () => {
+    await expect(tailWebhookLogs({
+      apiUrl: 'http://api.test', apiKey: 'tx_sandbox_test', status: 'failed', last: 0,
+      pollIntervalMs: 1, fetchFn: async () => Response.json({ ...listResponse([]), has_more: true, next_cursor: 'same' }),
+    })).rejects.toThrow('pagination did not advance');
+  });
   it('reads webhook event pages with multi-event and status filters', async () => {
     let url = '';
     const fetchFn: FetchLike = async (input) => {
