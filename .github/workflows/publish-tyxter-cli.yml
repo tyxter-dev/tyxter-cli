@@ -1,9 +1,7 @@
 name: Publish Tyxter CLI image
 
 on:
-  workflow_dispatch:
   push:
-    branches: [main]
     tags: ['v*']
 
 permissions:
@@ -45,10 +43,8 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           flavor: latest=false
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=sha-
-            type=raw,value=edge,enable={{is_default_branch}}
             type=raw,value=latest,enable=${{ steps.release.outputs.stable == 'true' }}
       - uses: docker/build-push-action@v7
         with:

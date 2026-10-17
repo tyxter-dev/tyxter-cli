@@ -22,10 +22,11 @@ RUN pnpm install --prod --frozen-lockfile
 
 FROM gcr.io/distroless/nodejs24-debian13:nonroot AS runtime
 WORKDIR /repo
+LABEL org.opencontainers.image.licenses="MIT"
 ENV NODE_ENV=production
 ENV TYXTER_CLI_STATE_DIR=/data
 COPY --from=production-deps /repo/node_modules ./node_modules
-COPY package.json ./
+COPY package.json LICENSE ./
 COPY --from=builder /repo/dist ./dist
 COPY --from=builder --chown=999:999 /data /data
 # Keep the uid/gid used by previous images so existing named volumes stay writable.

@@ -362,8 +362,9 @@ and linux/arm64. The runtime uses Node 24 in a distroless image with no shell or
 package manager and preserves uid/gid 999 for existing Docker volumes.
 
 Release tags must exactly match `v<package.json version>`. Only plain stable
-version tags update `latest`; `main` publishes to `edge`. Development and
-prerelease builds cannot replace `latest`.
+version tags update `latest`. Containers are published only on matching version
+tags; pushes to `main` and pull requests run validation without publishing.
+Prerelease tags publish versioned images without replacing `latest`.
 
 For npm packaging, `pnpm pack` builds a clean `dist` and includes only runtime
 files and documentation. `pnpm check:package` checks the package contents without
@@ -372,3 +373,7 @@ publishing. Tests are excluded from the production build.
 For programmatic listener consumers, the final result retains at most the most
 recent 1,000 event ids by default (configurable with `retainedEventIds`). Delivery
 counts remain cumulative, and `onBatch` receives every forwarded id.
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Tyxter.

@@ -164,7 +164,8 @@ Rebuild the container (`docker compose build`) if you changed anything under
 - Install pnpm directly with `npm install -g --allow-scripts=pnpm pnpm@12.14.0`, without Corepack.
 - Publishing depends on build validation for Node 22.22.2/24, runtime tests for Node 22.12,
   and linux/amd64/linux/arm64 containers.
-  Only matching stable version tags update `latest`; main builds use `edge`.
+  Containers publish only on matching version tags; stable tags update `latest`.
+  Main pushes and pull requests run validation without publishing.
 
 - Refuse live keys for normal sandbox commands (`listen`, `checkpoint`,
   `doctor`, `tour`, `simulate inbound`, `events resend`). The only live-key

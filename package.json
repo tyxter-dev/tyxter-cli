@@ -1,7 +1,8 @@
 {
   "name": "@tyxter/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tyxter CLI for local webhook testing.",
+  "license": "MIT",
   "type": "module",
   "bin": {
     "tyxter": "./dist/main.js"
@@ -40,6 +41,7 @@
     "dist/*.js",
     "dist/*.d.ts",
     "dist/*.js.map",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ]
 }

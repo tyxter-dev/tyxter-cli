@@ -106,7 +106,9 @@ the pull request.
 Before tagging a release, set `package.json` to the intended version and use an
 exact matching `v<version>` tag. CI validates the tag, both supported Node versions,
 and amd64/arm64 containers before publishing. Only stable version tags update the
-`latest` image; `main` updates `edge`. The final image has no shell or package manager.
+`latest` image. Containers publish only on version tags; pushes to `main` and
+pull requests run validation without publishing. The final image has no shell
+or package manager.
 
 ## Agent Contributions
 
