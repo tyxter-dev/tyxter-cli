@@ -110,6 +110,11 @@ and amd64/arm64 containers before publishing. Only stable version tags update th
 pull requests run validation without publishing. The final image has no shell
 or package manager.
 
+After a version tag passes validation and its container is published, GitHub
+Actions creates a GitHub release with generated release notes and the container
+image reference. Stable versions are marked latest; other versions are marked
+as prereleases. Rerunning the workflow preserves an existing release.
+
 ## Agent Contributions
 
 It is fine to use Codex, Claude Code, or another coding agent to prepare a

@@ -22,7 +22,7 @@ jobs:
     needs: validate
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
     steps:
       - uses: actions/checkout@v5
@@ -53,3 +53,24 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          STABLE_RELEASE: ${{ steps.release.outputs.stable }}
+        run: |
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists"
+            exit 0
+          fi
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          printf 'Container image: `%s:%s` (linux/amd64 and linux/arm64).\n' \
+            "$IMAGE_NAME" "$RELEASE_TAG" > "$notes_file"
+          flags=(--latest=false --prerelease)
+          if [[ "$STABLE_RELEASE" == "true" ]]; then
+            flags=(--latest)
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag \
+            --title "Tyxter CLI $RELEASE_TAG" --generate-notes \
+            --notes-file "$notes_file" "${flags[@]}"

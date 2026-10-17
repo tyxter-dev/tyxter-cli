@@ -166,6 +166,8 @@ Rebuild the container (`docker compose build`) if you changed anything under
   and linux/amd64/linux/arm64 containers.
   Containers publish only on matching version tags; stable tags update `latest`.
   Main pushes and pull requests run validation without publishing.
+  After container publishing succeeds, CI creates a GitHub release with generated
+  notes; reruns preserve existing releases. Non-stable tags create prereleases.
 
 - Refuse live keys for normal sandbox commands (`listen`, `checkpoint`,
   `doctor`, `tour`, `simulate inbound`, `events resend`). The only live-key
